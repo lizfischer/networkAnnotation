@@ -3,8 +3,7 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import User
-import json
-from projects.apps import ProjectsConfig
+from colorfield.fields import ColorField
 
 
 class Project(models.Model):
@@ -151,6 +150,7 @@ class EntityType(models.Model):
     )
     name = models.CharField()
     schema = models.JSONField(default=dict, blank=True)
+    color = ColorField(format="hex", default="#ffeb7a")  # TODO
 
     def validate_schema(self):
         """

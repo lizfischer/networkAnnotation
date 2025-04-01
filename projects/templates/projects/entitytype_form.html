@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Entity Type</title>
+</head>
+<body>
+
+<h1>New Entity Type</h1>
+
+<form method="post">{% csrf_token %}
+    {{ form.as_p }}
+
+    <label for="schema">Add metadata fields</label>
+    <fieldset name="schema" id="schema">
+
+
+    </fieldset>
+    <input type="submit" value="Save">
+</form>
+
+
+<br/>
+<select name="field_type" id="field_type">
+    {% for t in field_types %}
+        <option value={{ t }}>{{ t|capfirst }}</option>
+    {% endfor %}
+</select>
+<button onclick="addField()">Add field</button>
+
+{{ entity_types|json_script:"entity-types" }}
+
+<script>
+    let field_num = 0;
+
+    function addField(){
+        let type_selector = document.getElementById("field_type");
+        let type = type_selector.options[type_selector.selectedIndex].text;
+
+        const metadata_group = document.getElementById("schema");
+
+        let new_input = document.createElement("input");
+        new_input.setAttribute("name", "field_" + field_num);
+        new_input.setAttribute("data-type", type.toLowerCase());
+        new_input.setAttribute("type", "text");
+
+        let new_label = document.createElement("label");
+        new_label.innerHTML = type + " field name"
+        new_label.setAttribute("for", "field_" + field_num);
+
+        metadata_group.appendChild(new_label);
+        metadata_group.appendChild(new_input);
+
+        if (type.toLowerCase() === "list"){
+            field_num += 1;
+
+            let new_input = document.createElement("textarea");
+            new_input.setAttribute("name", "field_" + field_num);
+            new_input.setAttribute("rows", "4");
+            new_input.setAttribute("data-type", type);
+
+            let new_label = document.createElement("label");
+            new_label.innerHTML = "Options (one per line)"
+            new_label.setAttribute("for", "field_" + field_num);
+
+            metadata_group.appendChild(new_label);
+            metadata_group.appendChild(new_input);
+        }
+        else if (type === "entity"){
+            field_num += 1;
+
+            const entity_types = JSON.parse(document.getElementById("entity-types").textContent);
+            let new_input = document.createElement("select");
+            new_input.setAttribute("name", "field_" + field_num);
+            new_input.setAttribute("data-type", type);
+
+            for (let e in entity_types){
+                let option = document.createElement("option");
+                console.log(e);
+                option.value = e;
+                option.innerHTML = entity_types[e];
+                new_input.appendChild(option);
+            }
+
+            let new_label = document.createElement("label");
+            new_label.innerHTML = "Type"
+            new_label.setAttribute("for", "field_" + field_num);
+
+            metadata_group.appendChild(new_label);
+            metadata_group.appendChild(new_input);
+        }
+        field_num += 1;
+    }
+</script>
+
+
+</body>
+</html>

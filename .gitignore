@@ -3,3 +3,5 @@ __pycache__
 .env
 */migrations
 /media
+/.django_tailwind_cli
+/node_modules

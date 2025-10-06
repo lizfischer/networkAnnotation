@@ -1,0 +1,26 @@
+{% load static tailwind_tags%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{%  block title %}Annotate me baby{% endblock %}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js" integrity="sha384-ZBXiYtYQ6hJ2Y0ZNoYuI+Nq5MqWBr+chMrS/RkXpNzQCApHEhOt2aY8EJgqwHLkJ" crossorigin="anonymous"></script>
+    {% tailwind_css %}
+{#    <link href="{% static 'base.css' %}" rel="stylesheet">#}
+</head>
+<body class="">
+    {% block body %}{% endblock %}
+
+    <dialog id="base_modal" class="modal">
+      <div class="modal-box">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        </form>
+        <h3 class="text-lg font-bold">{% block modal_title %}{% endblock %}</h3>
+        {%  block modal_content %}{% endblock %}
+      </div>
+    </dialog>
+</body>
+</html>

@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-from projects.models import EntityType
+from apps.projects.models import EntityType
 
 
 class EntityTypeSchemaModelTests(TestCase):

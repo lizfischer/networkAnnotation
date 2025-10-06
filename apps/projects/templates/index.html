@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Projects{% endblock %}
+
+
+{%  block body %}
+    {% if project_list %}
+
+        <ul>
+            {% for project in project_list %}
+                <li><a href="{% url 'projects:detail' project.id %}">{{ project.title }}</a></li>
+            {% endfor %}
+
+        </ul>
+
+    {% endif %}
+
+
+    <button class="bg-blue-500 btn w-64 rounded-full" onclick="base_modal.showModal()">
+      + New Project
+    </button>
+
+{% endblock %}
+
+{# NEW PROJECT MODAL #}
+{% block modal_title %}New Project{% endblock %}
+{% block modal_content %}This is my modal content!{% endblock %}

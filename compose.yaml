@@ -4,7 +4,6 @@ services:
     ports:
       - 8000
     volumes:
-      - static_files:/app/staticfiles
       - ./:/app
     env_file:
       - .env
@@ -33,7 +32,6 @@ services:
       - "8080:80"
     volumes:
       - ./nginx/custom-nginx.conf:/etc/nginx/conf.d/default.conf
-      - static_files:/app/staticfiles
     depends_on:
       - server
     networks:
@@ -45,4 +43,3 @@ networks:
 
 volumes:
     db-data:
-    static_files:

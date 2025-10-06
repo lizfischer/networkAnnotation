@@ -1,13 +1,13 @@
 from django.shortcuts import render
 from django.views import generic
 from django.urls import reverse
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 
-from projects.models import Project, EntityType, allowed_field_types
+from apps.projects.models import Project, EntityType, allowed_field_types
 
 
 class IndexView(generic.ListView):
-    template_name = "projects/index.html"
+    template_name = "index.html"
     context_object_name = "project_list"
 
     def get_queryset(self):
@@ -17,7 +17,7 @@ class IndexView(generic.ListView):
 
 class ProjectDetailView(generic.DetailView):
     model = Project
-    template_name = "projects/detail.html"
+    template_name = "detail.html"
 
     def get_context_data(self, **kwargs):
         context = super(ProjectDetailView, self).get_context_data(**kwargs)
@@ -27,7 +27,7 @@ class ProjectDetailView(generic.DetailView):
 
 class EntityTypeDetailView(generic.DetailView):
     model = EntityType
-    template_name = "projects/entity_type.html"
+    template_name = "entity_type.html"
 
     def post(self, request, *args, **kwargs):
         # todo
@@ -57,3 +57,7 @@ class EntityTypeCreateView(generic.CreateView):
         all_fields = self.request.POST
         # todo process schema
         return super(EntityTypeCreateView, self).form_valid(form)
+
+
+def project_create_form(request):
+    return HttpResponse("<p>hi</p>")

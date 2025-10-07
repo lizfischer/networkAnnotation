@@ -5,3 +5,4 @@ __pycache__
 /media
 /.django_tailwind_cli
 /node_modules
+*.env

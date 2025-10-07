@@ -16,13 +16,9 @@ class Project(models.Model):
         return self.title
 
 
-# Allowed schema field types
-#     Free text
-#     Number
-#     Date
-#     Lat/Long
-#     Dropdown list of text options
-#     Bool (checkbox)
-#     Entity of type X
-#     todo: figure out what happens if an entity type is deleted
-allowed_field_types = ["text", "number", "date", "geo", "list", "bool", "entity"]
+class EntityType(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+
+class Entity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

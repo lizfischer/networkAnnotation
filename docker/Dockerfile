@@ -21,14 +21,6 @@ WORKDIR /app
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/go/dockerfile-user-best-practices/
 ARG UID=10001
-#RUN adduser \
-#    --disabled-password \
-#    --gecos "" \
-#    --home "/nonexistent" \
-#    --shell "/sbin/nologin" \
-#    --no-create-home \
-#    --uid "${UID}" \
-#    django_docker
 
 
 #Create static files dir
@@ -44,8 +36,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 RUN apt-get update && apt-get install -y libpq-dev nodejs npm
 
-# Switch to the non-privileged user to run the application.
-#USER django_docker
 
 # Copy the source code into the container.
 #COPY . .
@@ -55,5 +45,4 @@ EXPOSE 8000
 
 # Run the application.
 CMD python manage.py runserver 0.0.0.0:8000
-
 #CMD gunicorn networkAnnotation.wsgi:application --bind 0.0.0.0:8000

@@ -1,7 +1,25 @@
-from django.forms import Form, CharField
+from django.forms import Form, CharField, ModelForm, TextInput, Textarea
 from colorfield.forms import ColorField
 
+from apps.projects.models import Project
 
-class EntityTypeForm(Form):
-    name = CharField(label="Name", max_length=100)
-    color = ColorField(initial="#ffeb7a", format="hex")
+
+class ProjectForm(ModelForm):
+    class Meta:
+        model = Project
+        fields = ["title", "description"]
+        widgets = {
+            "title": TextInput(
+                attrs={
+                    "class": "input input-bordered w-full",
+                    "placeholder": "Project Name",
+                }
+            ),
+            "description": Textarea(
+                attrs={
+                    "class": "textarea",
+                    "rows": 3,
+                    "placeholder": "Describe your project (optional)",
+                }
+            ),
+        }

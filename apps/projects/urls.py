@@ -1,18 +1,9 @@
 from django.urls import path, reverse
-from . import views
-
+from .views import ProjectListView, ProjectCreateView, ProjectDetailView
 
 app_name = "projects"
 urlpatterns = [
-    path("create-form/", views.project_create_form, name="project_create_form"),
-    path("", views.IndexView.as_view(), name="index"),
-    path("<str:pk>/", views.ProjectDetailView.as_view(), name="detail"),
-    path(
-        "<str:project>/type/<str:pk>",
-        views.EntityTypeDetailView.as_view(),
-        name="entity_type",
-    ),
-    path(
-        "<str:project>/new_type", views.EntityTypeCreateView.as_view(), name="new_type"
-    ),
+    path("", ProjectListView.as_view(), name="list"),
+    path("create/", ProjectCreateView.as_view(), name="create"),
+    path("<str:pk>/", ProjectDetailView.as_view(), name="detail"),
 ]

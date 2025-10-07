@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Projects{% endblock %}
+
+
+{%  block body %}
+
+    <button class="bg-primary btn w-64 rounded-full"
+        onclick="base_modal.showModal()">
+      + New Project
+    </button>
+    {% if project_list %}
+
+        <ul class="list bg-base-100 rounded-box shadow-md w-md">
+          <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Your Projects</li>
+            {% for project in project_list %}
+                <li class="list-row">
+                    <div> {{ project.title }}</div>
+                    <div class="list-col-wrap list-col-grow text-xs">{{ project.description }}</div>
+                </li>
+            {% endfor %}
+
+        </ul>
+
+    {% endif %}
+
+
+{% endblock %}
+
+{# NEW PROJECT MODAL #}
+{% block modal_title %}New Project{% endblock %}
+{% block modal_content %}
+    <form
+          hx-post="{% url 'projects:create' %}"
+          hx-target="body"
+          hx-push-url="true"
+          hx-swap="outerHTML"
+        >
+          {% csrf_token %}
+          {{ form.as_p }}
+          <div class="modal-action">
+            <button type="submit" class="btn btn-primary">Create</button>
+            <button type="button" class="btn" onclick="new_project_modal.close()">Cancel</button>
+          </div>
+        </form>
+
+{% endblock %}

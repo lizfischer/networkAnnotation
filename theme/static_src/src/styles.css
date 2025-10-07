@@ -1,5 +1,7 @@
 @import "tailwindcss";
-@plugin "daisyui";
+@plugin "daisyui"{
+    themes: light --default, dark --prefersdark, cupcake, autumn;
+}
 
 /**
   * A catch-all path to Django template files, JavaScript, and Python files
@@ -9,3 +11,16 @@
   * the scope of this path.
   */
 @source "../../../**/*.{html,py,js}";
+
+
+/*!*Always generate these!*!*/
+/*@source inline(*/
+/*  !* Button colors *!*/
+/*  btn btn-primary btn-secondary btn-accent btn-ghost btn-outline btn-link*/
+/*  !* Background colors *!*/
+/*  bg-primary bg-secondary bg-accent bg-neutral bg-base-100 bg-info bg-success bg-warning bg-error*/
+/*  !* Text colors *!*/
+/*  text-primary text-secondary text-accent text-neutral text-info text-success text-warning text-error*/
+/*  !* Other common DaisyUI utilities *!*/
+/*  modal modal-box modal-backdrop*/
+/*);*/

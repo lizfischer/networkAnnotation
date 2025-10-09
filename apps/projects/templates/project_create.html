@@ -1,0 +1,16 @@
+<form
+        hx-post="{% url 'projects:create' %}"
+        hx-target="body"
+        hx-push-url="true"
+        hx-swap="outerHTML"
+>
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="modal-action">
+        <button type="submit" class="btn btn-primary">Create</button>
+        <button type="button" class="btn" onclick="base_modal.close()">Cancel</button>
+    </div>
+</form>
+
+
+

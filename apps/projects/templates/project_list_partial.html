@@ -1,0 +1,29 @@
+
+{% if project_list %}
+
+    <ul class="list bg-base-100 rounded-box shadow-md w-md">
+        <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Your Projects</li>
+        {% for project in project_list %}
+            <li class="list-row flex justify-between">
+                <a href="{% url 'projects:detail' pk=project.id %}">
+                    <div>{{ project.title }}</div>
+                    <div class="list-col-wrap list-col-grow text-xs">{{ project.description|default:"" }}</div>
+
+                </a>
+
+                <button
+                        hx-get="{% url 'projects:delete' pk=project.id %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        class="btn btn-sm grow-0"
+                        {#      onclick="base_modal.showModal()">#}
+                        onclick="openModal('Delete Project')">
+                    <i class="fa-solid fa-trash "></i>
+
+                </button>
+            </li>
+        {% endfor %}
+
+    </ul>
+
+{% endif %}

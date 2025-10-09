@@ -1,40 +1,57 @@
-{% load static tailwind_tags%}
+{% load static tailwind_tags %}
 <!DOCTYPE html>
 <html lang="en" data-theme="cupcake">
 <head>
-    <title>{%  block title %}Annotate me baby{% endblock %}</title>
+    <title>{% block title %}Annotate me baby{% endblock %}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js" integrity="sha384-ZBXiYtYQ6hJ2Y0ZNoYuI+Nq5MqWBr+chMrS/RkXpNzQCApHEhOt2aY8EJgqwHLkJ" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"
+            integrity="sha384-ZBXiYtYQ6hJ2Y0ZNoYuI+Nq5MqWBr+chMrS/RkXpNzQCApHEhOt2aY8EJgqwHLkJ"
+            crossorigin="anonymous"></script>
     {% tailwind_css %}
-{#    <link href="{% static 'base.css' %}" rel="stylesheet">#}
+    <script src="https://kit.fontawesome.com/898fbad675.js" crossorigin="anonymous"></script>
+    {#    <link href="{% static 'base.css' %}" rel="stylesheet">#}
 </head>
 <body class="">
-    {% include 'navbar.html' %}
+{% include 'navbar.html' %}
 
-    <div id="body_content" class="p-4">
-        {% block body %}{% endblock %}
-    </div>
+<div id="body_content" class="p-4">
+    {% block body %}{% endblock %}
+</div>
 
 
-    <dialog id="base_modal" class="modal">
-      <div class="modal-box">
+<dialog id="base_modal" class="modal">
+    <div class="modal-box">
         <form method="dialog">
-          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
         </form>
-        <h3 class="text-lg font-bold">{% block modal_title %}{% endblock %}</h3>
-        {%  block modal_content %}{% endblock %}
-      </div>
-    </dialog>
+        <h3 id="modal-title" class="text-lg font-bold"></h3>
+        <div id="modal-content"></div>
+    </div>
+</dialog>
+<script>
+    function openModal(title) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('base_modal').showModal();
+    }
+
+    function closeModal() {
+        document.getElementById('base_modal').close();
+        history.pushState({}, '', '/projects/');
+    }
+
+    document.getElementById("base_modal").addEventListener('submit', (e) => {
+        closeModal()
+    });
+
+</script>
 </body>
 </html>
 
-
-
 <!-- Keep Tailwind classes visible to the scanner -->
 <span class="hidden
-    btn btn-primary btn-secondary btn-accent
+    btn btn-primary btn-secondary btn-accent btn-warning
     bg-primary bg-secondary bg-accent
     text-primary text-secondary text-accent
     modal modal-box modal-backdrop

@@ -1,0 +1,14 @@
+<form method="post"
+      hx-post="{% url 'projects:delete' object.pk %}"
+        hx-target="body"
+        hx-push-url="true"
+        hx-swap="outerHTML"
+>{% csrf_token %}
+
+    <p>Are you sure you want to delete "{{ object }}"?</p>
+
+    <div class="modal-action">
+        <button type="button" class="btn" onclick="base_modal.close()">Cancel</button>
+        <button type="submit" class="btn btn-warning">Delete</button>
+    </div>
+</form>

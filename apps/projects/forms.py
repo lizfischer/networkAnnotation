@@ -1,5 +1,4 @@
 from django.forms import TextInput, Textarea
-from django.forms.models import inlineformset_factory
 from colorfield.widgets import ColorWidget
 from apps.projects.models import Project, EntityType
 from networkAnnotation.forms import BaseStyledForm

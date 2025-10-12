@@ -19,9 +19,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic.base import RedirectView
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="/projects/")),
     path("admin/", admin.site.urls),
+    path("accounts/", include("django.contrib.auth.urls")),
     # path("polls/", include("apps.polls.urls")),
     path("projects/", include("apps.projects.urls")),
 ]

@@ -1,8 +1,7 @@
 # reference.py
 from .base import BaseSchemaField
 from django.core.exceptions import ValidationError
-from apps.projects.models import Entity, EntityType
-
+from django.apps import apps
 
 # todo: figure out what happens if an entity type is deleted
 
@@ -18,6 +17,7 @@ class ReferenceField(BaseSchemaField):
                 "Reference field must define 'target_entity_type_id'."
             )
         # Optional: verify that the target EntityType exists
+        EntityType = apps.get_model("projects", "EntityType")
         if not EntityType.objects.filter(id=target_id).exists():
             raise ValidationError(
                 f"Target EntityType with id {target_id} does not exist."
@@ -31,6 +31,8 @@ class ReferenceField(BaseSchemaField):
             raise ValidationError(f"{field_def['name']} must be an entity ID (int).")
 
         target_id = field_def.get("target_entity_type_id")
+        Entity = apps.get_model("projects", "Entity")
+
         if (
             target_id
             and not Entity.objects.filter(id=value, entity_type_id=target_id).exists()

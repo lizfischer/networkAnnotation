@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load tailwind_filters %}
+
+{% block body %}
+
+    {% if form.errors %}
+        <div role="alert" class="alert alert-error alert-outline mb-4">
+            <p>Your username and password didn't match. Please try again.</p>
+        </div>
+    {% endif %}
+
+    {% if next %}
+        {% if user.is_authenticated %}
+            <div role="alert" class="alert alert-warning alert-outline mb-4">
+                <p>Your account doesn't have access to this page. To proceed,
+                    please login with an account that has access.</p>
+            </div>
+        {% else %}
+            <div role="alert" class="alert alert-info alert-outline mb-4">
+                <p>Please login to see this page.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <form method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        <fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xs border p-4">
+            <label class="input focus-within:outline-hidden">
+                <span class="label" id="{{ form.username.id_for_label }}">{{ form.username.label }}</span>
+                {{ form.username }}
+            </label>
+            <label class="input focus-within:outline-hidden">
+                <span class="label" id="{{ form.password.id_for_label }}">{{ form.password.label }}</span>
+                {{ form.password }}
+            </label>
+            <button class="btn btn-neutral mt-4">Login</button>
+            {# Assumes you set up the password_reset view in your URLconf#}
+            <p><a href="{% url 'password_reset' %}">Lost password?</a></p>
+
+            <input type="hidden" name="next" value="{{ next }}">
+        </fieldset>
+    </form>
+
+
+{% endblock %}

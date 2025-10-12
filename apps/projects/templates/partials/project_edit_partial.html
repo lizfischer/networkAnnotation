@@ -1,0 +1,19 @@
+<form
+        hx-post="{% url 'projects:edit' project.id %}"
+        hx-target="#project-details-edit"
+        hx-swap="outerHTML"
+        class="border p-4 rounded mb-2 bg-base-200"
+        id="project-details-edit">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success btn-sm">Save</button>
+    <button
+            type="button"
+            hx-get="{% url 'projects:details_partial' project.id %}"
+            hx-target="#project-details-edit"
+            hx-swap="outerHTML"
+            class="btn btn-secondary btn-sm"
+    >
+        Cancel
+    </button>
+</form>

@@ -7,7 +7,7 @@ from .bool import BoolField
 from .reference import ReferenceField
 
 FIELD_REGISTRY = {
-    cls.type: cls()
+    cls.type: cls
     for cls in [
         TextField,
         NumberField,

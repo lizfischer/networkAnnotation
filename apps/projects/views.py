@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import render
+from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
@@ -11,29 +12,17 @@ from django.views.generic import (
     DeleteView,
     CreateView,
     TemplateView,
+    UpdateView,
 )
 
 from networkAnnotation.decorators import htmx_only
-from .forms import ProjectForm
-from apps.projects.models import Project
+from .forms import ProjectForm, EntityTypeFormSet, EntityTypeForm
+from apps.projects.models import Project, EntityType
 from django.shortcuts import redirect
 
-
-# @method_decorator(never_cache, name="dispatch")
-# class ProjectListView(LoginRequiredMixin, ListView):
-#     model = Project
-#     template_name = "project_list.html"
-#     context_object_name = "project_list"
-#     form = ProjectForm()
-#
-#     def get_queryset(self):
-#         """Get all a user's projects"""
-#         return Project.objects.filter(owner=self.request.user)
-#
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         context["form"] = ProjectForm()
-#         return context
+"""
+Project List View
+"""
 
 
 class ProjectListView(LoginRequiredMixin, TemplateView):
@@ -45,12 +34,18 @@ class ProjectListView(LoginRequiredMixin, TemplateView):
 def project_list_partial(request):
     """Returns only the list HTML for htmx swaps. This makes the back button a better experience"""
     projects = Project.objects.filter(owner=request.user)
-    return render(request, "project_list_partial.html", {"project_list": projects})
+    return render(
+        request, "partials/project_list_partial.html", {"project_list": projects}
+    )
 
 
-class ProjectCreateView(CreateView):
+"""
+Project CRUD
+"""
+
+
+class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
-    # fields = ["title", "description"]
     form_class = ProjectForm
     template_name = "project_create.html"
 
@@ -63,16 +58,145 @@ class ProjectCreateView(CreateView):
         return super().form_valid(form)
 
 
-class ProjectDeleteView(DeleteView):
-    model = Project
-    template_name = "project_confirm_delete.html"
-    success_url = reverse_lazy("projects:list")
-
-
-class ProjectDetailView(DetailView):
+class ProjectDetailView(LoginRequiredMixin, DetailView):
     model = Project
     template_name = "project_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super(ProjectDetailView, self).get_context_data(**kwargs)
+        entity_types = self.object.entity_types.all()
+        context["entity_types"] = entity_types
+        context["schemas"] = {
+            et.id: et.schema_object for et in entity_types
+        }  # optional: also pass deserialized schema
+        context["breadcrumbs"] = [
+            {
+                "label": "My Projects",
+                "link": reverse_lazy("projects:list"),
+                "icon": None,
+            },
+            {"label": self.object.title, "link": None, "icon": None},
+        ]
         return context
+
+
+class ProjectUpdateView(LoginRequiredMixin, UpdateView):
+    model = Project
+    fields = ["title", "description"]
+    template_name = "partials/project_edit_partial.html"
+
+    def get_success_url(self):
+        # redirect back to the detail page after saving
+        return reverse_lazy("projects:details_partial", kwargs={"pk": self.object.pk})
+
+    # def get_context_data(self, **kwargs):
+    #     data = super().get_context_data(**kwargs)
+    #     if self.request.POST:
+    #         data["entity_formset"] = EntityTypeFormSet(
+    #             self.request.POST, instance=self.object
+    #         )
+    #     else:
+    #         data["entity_formset"] = EntityTypeFormSet(instance=self.object)
+    #     return data
+    #
+    # def form_valid(self, form):
+    #     context = self.get_context_data()
+    #     entity_formset = context["entity_formset"]
+    #     if form.is_valid() and entity_formset.is_valid():
+    #         self.object = form.save()
+    #         entity_formset.instance = self.object
+    #         entity_formset.save()
+    #         return redirect(self.get_success_url())
+    #     else:
+    #         return self.render_to_response(self.get_context_data(form=form))
+
+
+@login_required
+@htmx_only
+def project_details_partial(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    return render(
+        request, "partials/project_details_partial.html", {"project": project}
+    )
+
+
+class ProjectDeleteView(LoginRequiredMixin, DeleteView):
+    model = Project
+    template_name = "confirm_modal.html"
+    success_url = reverse_lazy("projects:list")
+
+    def get_context_data(self, **kwargs):
+        context = super(ProjectDeleteView, self).get_context_data(**kwargs)
+        return context | {
+            "url": reverse_lazy("projects:delete", kwargs={"pk": self.object.pk}),
+            "target": "body",
+            "prompt": f"Are you sure you want to delete {self.object}?",
+            "confirm_text": "Delete",
+        }
+
+
+"""
+EntityType CRUD
+"""
+
+
+@login_required
+@htmx_only
+def add_entitytype(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    form = EntityTypeForm(request.POST or None)
+    if request.method == "POST":
+        entity = form.save(commit=False)
+        entity.project = project
+        entity.save()
+        return render(
+            request, "partials/entitytype_list_partial.html", {"entity": entity}
+        )
+    return render(
+        request,
+        "partials/entitytype_edit_partial.html",
+        {"form": form, "project": project},
+    )
+
+
+@login_required
+@htmx_only
+def entity_row_partial(request, pk):
+    entity = get_object_or_404(EntityType, pk=pk)
+    return render(request, "partials/entitytype_list_partial.html", {"entity": entity})
+
+
+@login_required
+@htmx_only
+def edit_entitytype(request, pk):
+    entity = get_object_or_404(EntityType, pk=pk)
+    form = EntityTypeForm(request.POST or None, instance=entity)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return render(
+            request, "partials/entitytype_list_partial.html", {"entity": entity}
+        )
+    return render(
+        request,
+        "partials/entitytype_edit_partial.html",
+        {"form": form, "entity": entity},
+    )
+
+
+@login_required
+@htmx_only
+def delete_entitytype(request, pk):
+    entity = get_object_or_404(EntityType, pk=pk)
+    if request.method == "POST":
+        entity.delete()
+        return HttpResponse("")  # HTMX
+    return render(
+        request,
+        "confirm_modal.html",
+        {
+            "url": reverse_lazy("projects:delete_entitytype", kwargs={"pk": entity.pk}),
+            "target": f"#entity-{entity.id}",
+            "prompt": f"Are you sure you want to delete {entity.name}?",
+            "confirm_text": "Delete",
+        },
+    )

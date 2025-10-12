@@ -1,0 +1,24 @@
+<form
+        hx-post="{% if entity %}{% url 'projects:edit_entitytype' entity.id %}
+            {% else %}{% url 'projects:add_entitytype' project.pk %}{% endif %}"
+        hx-target="#entity-{% if entity %}{{ entity.id }}{% else %}new{% endif %}"
+        hx-swap="outerHTML"
+        class="border p-4 rounded mb-2 bg-base-200"
+        id="entity-{{ entity.id }}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success btn-sm">Save</button>
+    {% if entity %}
+        <button
+                type="button"
+                hx-get="{% url 'projects:entity_row' entity.id %}"
+                hx-target="#entity-{{ entity.id }}"
+                hx-swap="outerHTML"
+                class="btn btn-secondary btn-sm"
+        >
+            Cancel
+        </button>
+    {% else %}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('form').remove()">Cancel</button>
+    {% endif %}
+</form>

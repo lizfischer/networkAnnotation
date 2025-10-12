@@ -4,6 +4,13 @@ from django.core.exceptions import ValidationError
 class BaseSchemaField:
     type = None
 
+    def __init__(self, **kwargs):
+        self.name = kwargs.get("name")
+        self.label = kwargs.get("label")
+        self.required = kwargs.get("required", False)
+        # store the original definition so type-specific fields can access extras
+        self._definition = kwargs
+
     def validate(self, value, field_def):
         raise NotImplementedError()
 
@@ -40,3 +47,16 @@ class BaseSchemaField:
             raise ValidationError("'required' must be a boolean if provided.")
 
         return field_def
+
+    def to_dict(self):
+        """Return a dict suitable for templates or JSON serialization"""
+        result = {
+            "name": self.name,
+            "label": self.label,
+            "type": self.type,
+            "required": self.required,
+        }
+        # Include any extra keys in the original definition (like max_length, options)
+        extras = {k: v for k, v in self._definition.items() if k not in result}
+        result.update(extras)
+        return result

@@ -52,6 +52,7 @@ DATABASES = {
 
 INSTALLED_APPS = [
     "apps.projects.apps.ProjectsConfig",
+    "apps.users.apps.UsersConfig",
     "apps.library.apps.LibraryConfig",
     "colorfield",
     "django.contrib.admin",
@@ -62,6 +63,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "tailwind",
     "theme",
+    "crispy_forms",
+    "crispy_tailwind",
 ]
 TAILWIND_APP_NAME = "theme"
 
@@ -144,3 +147,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+LOGIN_REDIRECT_URL = "projects:list"
+LOGOUT_REDIRECT_URL = "projects:list"
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
+CRISPY_TEMPLATE_PACK = "tailwind"

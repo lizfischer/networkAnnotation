@@ -1,0 +1,25 @@
+<dialog id="base_modal" class="modal">
+    <div class="modal-box">
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        </form>
+        <h3 id="modal-title" class="text-lg font-bold"></h3>
+        <div id="modal-content"></div>
+    </div>
+</dialog>
+<script>
+    function openModal(title) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('base_modal').showModal();
+    }
+
+    function closeModal() {
+        document.getElementById('base_modal').close();
+        history.pushState({}, '', '/projects/');
+    }
+
+    document.getElementById("base_modal").addEventListener('submit', (e) => {
+        closeModal()
+    });
+
+</script>

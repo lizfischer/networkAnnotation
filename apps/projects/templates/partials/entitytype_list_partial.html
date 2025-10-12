@@ -1,0 +1,75 @@
+<div class="border p-4 rounded mb-2" id="entity-{{ entity.id }}">
+    <div class="flex justify-between items-center">
+
+        <h3 class="badge badge-xl collapse-title"#}
+            style="background-color: {{ entity.color }}">
+            {{ entity.name }}
+        </h3>
+        <div class="flex gap-2">
+            <button
+                    hx-get="{% url 'projects:edit_entitytype' entity.id %}"
+                    hx-target="#entity-{{ entity.id }}"
+                    hx-swap="outerHTML"
+                    class="btn btn-sm btn-secondary"
+            >
+                Edit
+            </button>
+            <button
+                    hx-get="{% url 'projects:delete_entitytype' entity.id %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    {#      _="on htmx:afterOnLoad set #modal-title.innerHTML to 'New Project' then call showModal()"#}
+                    _="on htmx:afterOnLoad set #modal-title.innerHTML to 'New Project'"
+                    class="btn btn-sm btn-error"
+                    {#      onclick="base_modal.showModal()">#}
+                    onclick="openModal('Delete Entity Type')">
+                Delete
+            </button>
+        </div>
+    </div>
+    <p>{{ entity.description }}</p>
+    {% if et.schema_object %}#}
+        <table class="table">
+            <!-- head -->
+            <thead>
+            <tr>
+                <th>Field Label</th>
+                <th>Type</th>
+                <th>Required?</th>
+                <th>Settings</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            {% for field in et.schema_object %}
+                {% with f=field.to_dict %}
+                    <tr>
+                        <td>{{ f.label }} ({{ f.name }})</td>
+                        <td>{{ f.type }}</td>
+                        <td>
+                            <input type="checkbox" class="checkbox checkbox-neutral pointer-events-none"
+                                   {% if f.required %}checked="checked"{% endif %}/>
+                        </td>
+                        <td>
+                            <ul>
+                                {% if f.max_length %}
+                                    <li>max length {{ f.max_length }}</li> {% endif %}
+                                {% if f.target_entity_type_id %}
+                                    <li>references entity type
+                                        {{ f.target_entity_type_id }}</li>{% endif %}
+                                {% if f.choices %}
+                                    <li>Choices:
+                                        <ul class="list-disc list-inside">{% for c in f.choices %}
+                                            <li>{{ c }}</li>{% endfor %}</ul>
+                                    </li>{% endif %}
+                            </ul>
+                        </td>
+                    </tr>
+                {% endwith %}
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <span class="text-sm">No fields defined for this tag type</span>
+    {% endif %}
+</div>

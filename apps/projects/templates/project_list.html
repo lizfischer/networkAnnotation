@@ -11,7 +11,7 @@
             hx-swap="innerHTML"
             {#      _="on htmx:afterOnLoad set #modal-title.innerHTML to 'New Project' then call showModal()"#}
             _="on htmx:afterOnLoad set #modal-title.innerHTML to 'New Project'"
-\           class="bg-primary btn w-64 rounded-full"
+           class="bg-primary btn w-64 rounded-full"
             {#      onclick="base_modal.showModal()">#}
             onclick="openModal('New Project')">
         + New Project
@@ -21,7 +21,7 @@
          hx-get="{% url 'projects:project_list_partial' %}"
          hx-trigger="load">
         <!-- fallback content if JS disabled -->
-        {% include "project_list_partial.html" %}
+        {% include "partials/project_list_partial.html" %}
     </div>
 
 {% endblock %}

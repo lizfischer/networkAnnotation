@@ -12,40 +12,22 @@
     {% tailwind_css %}
     <script src="https://kit.fontawesome.com/898fbad675.js" crossorigin="anonymous"></script>
     {#    <link href="{% static 'base.css' %}" rel="stylesheet">#}
+    <script src="https://jscolor.com/releases/2.4.5/jscolor.js"></script>
+    {% block head %}{% endblock %}
+
 </head>
 <body class="">
+
 {% include 'navbar.html' %}
 
-<div id="body_content" class="p-4">
-    {% block body %}{% endblock %}
+<div class="justify-center flex">
+    <div id="body_content" class="container px-4 py-8">
+        {% include 'breadcrumbs.html' %}
+        {% block body %}{% endblock %}
+    </div>
 </div>
 
-
-<dialog id="base_modal" class="modal">
-    <div class="modal-box">
-        <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-        </form>
-        <h3 id="modal-title" class="text-lg font-bold"></h3>
-        <div id="modal-content"></div>
-    </div>
-</dialog>
-<script>
-    function openModal(title) {
-        document.getElementById('modal-title').textContent = title;
-        document.getElementById('base_modal').showModal();
-    }
-
-    function closeModal() {
-        document.getElementById('base_modal').close();
-        history.pushState({}, '', '/projects/');
-    }
-
-    document.getElementById("base_modal").addEventListener('submit', (e) => {
-        closeModal()
-    });
-
-</script>
+{% include 'modal.html' %}
 </body>
 </html>
 
@@ -56,3 +38,11 @@
     text-primary text-secondary text-accent
     modal modal-box modal-backdrop
 "></span>
+
+{% csrf_token %}
+<script>
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        event.detail.headers['X-CSRFToken'] = csrfToken;
+    });
+</script>

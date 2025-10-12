@@ -2,7 +2,39 @@
 {% block title %} {{ project.title | default:"Project Details" }}{% endblock %}
 
 {% block body %}
-<h1>Project: {{ project.title }}</h1>
-<p>{{ project.description }}</p>
+    <div class="flex justify-between items-center align-top mb-4">
 
+        <div id="project-details">
+            <h1>{{ project.title }}</h1>
+            <p class="mb-4">{{ project.description }}</p>
+        </div>
+        <button
+                hx-get="{% url 'projects:edit' project.pk %}"
+                hx-target="#project-details"
+                hx-swap="outerHTML"
+                class="btn btn-primary btn-sm">
+            Edit Details
+        </button>
+    </div>
+
+    <div>
+
+        <h2>Entity Types</h2>
+        <div id="entity-list" class="space-y-4">
+            {% for entity in project.entity_types.all %}
+                {% include "partials/entitytype_list_partial.html" %}
+            {% endfor %}
+            <div id="entity-new"></div>
+        </div>
+
+        <button
+                hx-get="{% url 'projects:add_entitytype' project.pk %}"
+                hx-target="#entity-new"
+                hx-swap="innerHTML"
+                class="btn btn-primary mt-4"
+        >
+            + Add Entity Type
+        </button>
+
+    </div>
 {% endblock %}

@@ -1,8 +1,6 @@
-from colorfield.widgets import ColorWidget
-from django.forms import Form, CharField, ModelForm, TextInput, Textarea
-from colorfield.forms import ColorField
+from django.forms import TextInput, Textarea
 from django.forms.models import inlineformset_factory
-
+from colorfield.widgets import ColorWidget
 from apps.projects.models import Project, EntityType
 from networkAnnotation.forms import BaseStyledForm
 
@@ -42,12 +40,3 @@ class EntityTypeForm(BaseStyledForm):
                 }
             ),
         }
-
-
-EntityTypeFormSet = inlineformset_factory(
-    Project,
-    EntityType,
-    form=EntityTypeForm,
-    extra=1,
-    can_delete=True,
-)

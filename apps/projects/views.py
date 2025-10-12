@@ -3,11 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import never_cache
 from django.views.generic import (
-    ListView,
-    View,
     DetailView,
     DeleteView,
     CreateView,
@@ -16,9 +12,8 @@ from django.views.generic import (
 )
 
 from networkAnnotation.decorators import htmx_only
-from .forms import ProjectForm, EntityTypeFormSet, EntityTypeForm
+from .forms import ProjectForm, EntityTypeForm
 from apps.projects.models import Project, EntityType
-from django.shortcuts import redirect
 
 """
 Project List View
@@ -88,27 +83,6 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     def get_success_url(self):
         # redirect back to the detail page after saving
         return reverse_lazy("projects:details_partial", kwargs={"pk": self.object.pk})
-
-    # def get_context_data(self, **kwargs):
-    #     data = super().get_context_data(**kwargs)
-    #     if self.request.POST:
-    #         data["entity_formset"] = EntityTypeFormSet(
-    #             self.request.POST, instance=self.object
-    #         )
-    #     else:
-    #         data["entity_formset"] = EntityTypeFormSet(instance=self.object)
-    #     return data
-    #
-    # def form_valid(self, form):
-    #     context = self.get_context_data()
-    #     entity_formset = context["entity_formset"]
-    #     if form.is_valid() and entity_formset.is_valid():
-    #         self.object = form.save()
-    #         entity_formset.instance = self.object
-    #         entity_formset.save()
-    #         return redirect(self.get_success_url())
-    #     else:
-    #         return self.render_to_response(self.get_context_data(form=form))
 
 
 @login_required

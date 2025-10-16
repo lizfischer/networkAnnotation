@@ -10,18 +10,12 @@
                 <div class="dropdown dropdown-end">
                     <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar avatar-placeholder">
                         <div class="w-12 rounded-full bg-base-300">
-                            <span class="text-xl">L</span>
+                            <span class="text-xl">{{ user|upper|slice:"0:1" }}</span>
                         </div>
                     </div>
                     <ul
                             tabindex="-1"
                             class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
-{#                        <li>#}
-{#                            <a class="justify-between">#}
-{#                                Profile#}
-{#                                <span class="badge">New</span>#}
-{#                            </a>#}
-{#                        </li>#}
                         <li><a>Settings</a></li>
                         <li>
                             <form action="{% url 'logout' %}" method="post">
@@ -32,7 +26,7 @@
                     </ul>
                 </div>
             {% else %}
-                <a href="{% url 'login' %}">Log In</a>
+                <a href="{% url 'login' %}">Log In / Register</a>
             {% endif %}
 
         </div>

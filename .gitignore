@@ -6,3 +6,4 @@ __pycache__
 /.django_tailwind_cli
 /node_modules
 *.env
+theme/static/*

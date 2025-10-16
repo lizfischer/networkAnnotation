@@ -77,7 +77,8 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
 
 class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     model = Project
-    fields = ["title", "description"]
+    form_class = ProjectForm
+    # fields = ["title", "description"]
     template_name = "partials/project_edit_partial.html"
 
     def get_success_url(self):

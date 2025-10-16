@@ -45,3 +45,27 @@
         event.detail.headers['X-CSRFToken'] = csrfToken;
     });
 </script>
+
+
+<script>
+document.body.addEventListener('htmx:afterSwap', (event) => {
+  // small delay to ensure browser finished inserting/painting
+  setTimeout(() => {
+    // try the swapped fragment first
+    const root = event.target;
+    const el =
+      (root && root.querySelector &&
+       root.querySelector('input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled])'))
+      // fallback to searching whole document
+      || document.querySelector('input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
+
+    if (el) {
+      el.focus();
+      // optional: select input contents if it's a text field
+      if (el.select && (el.type === 'text' || el.tagName.toLowerCase() === 'textarea')) {
+        el.select();
+      }
+    }
+  }, 10); // 0 often works, 10ms is a tiny bit safer
+});
+</script>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block head %}<script src="https://jscolor.com/releases/2.4.5/jscolor.js"></script>{% endblock %}
+{% block head %}{% endblock %}
 
 {% block title %} {{ project.title | default:"Project Details" }}{% endblock %}
 
@@ -10,13 +10,28 @@
             <h1>{{ project.title }}</h1>
             <p class="mb-4">{{ project.description }}</p>
         </div>
-        <button
-                hx-get="{% url 'projects:edit' project.pk %}"
-                hx-target="#project-details"
-                hx-swap="outerHTML"
-                class="btn btn-primary btn-sm">
-            Edit Details
-        </button>
+        <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" id="project-menu" class="btn m-1"><i class="fa-solid fa-ellipsis-vertical"></i></div>
+
+            <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
+                <li><a
+                        hx-get="{% url 'projects:edit' project.pk %}"
+                        hx-target="#project-details"
+                        hx-swap="outerHTML"
+                        class="">
+                    Edit Details
+                </a></li>
+                <li><a
+                        hx-get="{% url 'projects:delete' pk=project.id %}"
+                        hx-target="#modal-content"
+                        hx-swap="innerHTML"
+                        class=""
+                        onclick="openModal('Delete Project')">
+
+                    Delete Project</a></li>
+            </ul>
+        </div>
+
     </div>
 
     <div>

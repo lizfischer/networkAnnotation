@@ -1,7 +1,7 @@
 <div class="border p-4 rounded mb-2" id="entity-{{ entity.id }}">
     <div class="flex justify-between items-center">
 
-        <h3 class="badge badge-xl collapse-title"#}
+        <h3 class="badge badge-xl collapse-title"
             style="background-color: {{ entity.color }}">
             {{ entity.name }}
         </h3>
@@ -10,7 +10,7 @@
                     hx-get="{% url 'projects:edit_entitytype' entity.id %}"
                     hx-target="#entity-{{ entity.id }}"
                     hx-swap="outerHTML"
-                    class="btn btn-sm btn-secondary"
+                    class="btn btn-sm btn-outline-neutral"
             >
                 Edit
             </button>
@@ -20,7 +20,7 @@
                     hx-swap="innerHTML"
                     {#      _="on htmx:afterOnLoad set #modal-title.innerHTML to 'New Project' then call showModal()"#}
                     _="on htmx:afterOnLoad set #modal-title.innerHTML to 'New Project'"
-                    class="btn btn-sm btn-error"
+                    class="btn btn-sm btn-accent"
                     {#      onclick="base_modal.showModal()">#}
                     onclick="openModal('Delete Entity Type')">
                 Delete

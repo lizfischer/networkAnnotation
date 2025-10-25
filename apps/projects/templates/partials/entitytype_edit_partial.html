@@ -4,9 +4,93 @@
         hx-target="#entity-{% if entity %}{{ entity.id }}{% else %}new{% endif %}"
         hx-swap="outerHTML"
         class="border p-4 rounded mb-2 bg-base-200"
-        id="entity-{{ entity.id }}">
+        id="entity-{{ entity.id }}"
+        x-data="{
+{#              fields: JSON.parse(document.getElementById('schema-json').textContent),#}
+              fields: JSON.parse(document.getElementById('schema-json').textContent).map(f => {
+                    if (f.type === 'dropdown' && f.choices) {
+                        f.choices_str = f.choices.join('\n');
+                    } else {
+                        f.choices_str = '';
+                    }
+                    return f;
+              }),
+              addField() { this.fields.push({ name: '', label: '', type: 'text' }) },
+              removeField(i) { this.fields.splice(i, 1) },
+              prepareForSubmit() {
+                    // Convert textarea options back to choices array
+                    this.fields.forEach(f => {
+                        if (f.type === 'dropdown') {
+                            f.choices = f.choices_str.split('\n').map(s => s.trim()).filter(Boolean);
+                        }
+                        delete f.choices_str;
+                    });
+                }
+            }"
+        @submit.prevent="
+            prepareForSubmit();
+            $el.querySelector('input[name=schema]').value = JSON.stringify(fields);
+          "
+>
+    <script id="schema-json" type="application/json">
+  {{ schema_json|default:"[]"|safe }}
+</script>
     {% csrf_token %}
+
+
     {{ form.as_p }}
+
+    <template x-for="(field, i) in fields" :key="i">
+        <div class="border p-3 mb-3 rounded bg-gray-50">
+            <div class="flex justify-between items-center">
+                {#                <strong x-text="'Field ' + (i + 1)"></strong>#}
+                <button @click="removeField(i)" type="button" class="text-red-500 text-sm">✕</button>
+            </div>
+
+            <!-- common metadata -->
+            <label class="block mt-2">Name</label>
+            <input x-model="field.name" class="border rounded w-full p-1">
+
+            <label class="block mt-2">Label</label>
+            <input x-model="field.label" class="border rounded w-full p-1">
+
+            <label class="block mt-2">Type</label>
+            <select x-model="field.type" class="border rounded w-full p-1">
+                {% for field_type in field_types %}
+                    <option value="{{ field_type }}">{{ field_type|capfirst }}</option>
+                {% endfor %}
+            </select>
+
+            <label class="block mt-2">Required?</label>
+            <input x-model="field.required" type="checkbox" class="border rounded w-full p-1">
+
+            <!-- type-specific options -->
+            <template x-if="field.type === 'dropdown'">
+                <div class="mt-3">
+                    <label>Choices (one per line)</label>
+                    <textarea x-model="field.choices_str" class="border rounded w-full p-1"></textarea>
+                </div>
+            </template>
+
+            <template x-if="field.type === 'reference'">
+                <div class="mt-3">
+                    <label>Entity type to reference</label>
+                    <select x-model="field.default">
+                        {% for t in entity_types %}
+                            <option>{{ t.name|capfirst }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <button type="button" @click="addField()" class="btn btn-primary mt-4">+ Add Field</button>
+
+    <!-- Bind hidden input to Alpine state -->
+    <input type="hidden" name="schema" :value="JSON.stringify(fields)">
+
+
     <div class="mt-4">
         <button type="submit" class="btn btn-primary btn-sm">Save</button>
         {% if entity %}

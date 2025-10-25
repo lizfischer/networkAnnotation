@@ -1,4 +1,6 @@
-from django.forms import TextInput, Textarea
+import json
+
+from django.forms import TextInput, Textarea, HiddenInput, ValidationError
 from colorfield.widgets import ColorWidget
 from apps.projects.models import Project, EntityType
 from networkAnnotation.forms import BaseStyledForm
@@ -28,8 +30,9 @@ class ProjectForm(BaseStyledForm):
 class EntityTypeForm(BaseStyledForm):
     class Meta:
         model = EntityType
-        fields = ["name", "color", "description", "schema", "is_active"]
+        fields = ["name", "color", "description", "is_active", "schema"]
         widgets = {
+            "schema": HiddenInput(),
             "color": ColorWidget,
             "description": Textarea(
                 attrs={
@@ -39,3 +42,19 @@ class EntityTypeForm(BaseStyledForm):
                 }
             ),
         }
+
+    def clean_schema(self):
+        value = self.cleaned_data.get("schema")
+        print(value)
+        # if the hidden field came through as a string, parse it
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                raise ValidationError("Invalid JSON in schema")
+
+            if not isinstance(parsed, list):
+                raise ValidationError("Schema must be a list of field definitions")
+
+            return parsed
+        return value

@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
@@ -14,6 +16,7 @@ from django.views.generic import (
 from networkAnnotation.decorators import htmx_only
 from .forms import ProjectForm, EntityTypeForm
 from apps.projects.models import Project, EntityType
+from .schema_definitions.registry import FIELD_REGISTRY
 
 """
 Project List View
@@ -146,15 +149,34 @@ def entity_row_partial(request, pk):
 def edit_entitytype(request, pk):
     entity = get_object_or_404(EntityType, pk=pk)
     form = EntityTypeForm(request.POST or None, instance=entity)
+    project_entity_types = entity.project.entity_types.all()
+    field_types = FIELD_REGISTRY.keys()
     if request.method == "POST" and form.is_valid():
         form.save()
+        entity = get_object_or_404(EntityType, pk=pk)
+        schema = json.dumps(entity.schema)
         return render(
-            request, "partials/entitytype_list_partial.html", {"entity": entity}
+            request,
+            "partials/entitytype_list_partial.html",
+            {
+                "entity": entity,
+                "schema_json": schema,
+                "field_types": field_types,
+                "entity_types": project_entity_types,
+            },
         )
+
+    schema = json.dumps(entity.schema)
     return render(
         request,
         "partials/entitytype_edit_partial.html",
-        {"form": form, "entity": entity},
+        {
+            "form": form,
+            "entity": entity,
+            "schema_json": schema,
+            "field_types": field_types,
+            "entity_types": project_entity_types,
+        },
     )
 
 

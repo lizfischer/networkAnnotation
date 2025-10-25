@@ -5,6 +5,16 @@ from django.apps import apps
 
 # todo: figure out what happens if an entity type is deleted
 
+"""
+Reference fields have:
+    - Name
+    - Label
+    - Required
+    - Type referenced
+    - Value
+    
+"""
+
 
 class ReferenceField(BaseSchemaField):
     type = "reference"

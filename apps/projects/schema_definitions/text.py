@@ -1,6 +1,14 @@
 from django.core.exceptions import ValidationError
 from .base import BaseSchemaField
 
+"""
+Text fields have:
+    - Name
+    - Label
+    - Required
+    - Value
+"""
+
 
 class TextField(BaseSchemaField):
     type = "text"

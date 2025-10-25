@@ -1,9 +1,17 @@
 from django.core.exceptions import ValidationError
 from .base import BaseSchemaField
 
+"""
+Number fields have:
+    - Name
+    - Label
+    - Required
+    - Value
+"""
+
 
 class NumberField(BaseSchemaField):
-    type = "text"
+    type = "number"
 
     def validate(self, value, field_def):
         if value is None:

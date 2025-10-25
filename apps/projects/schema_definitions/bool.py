@@ -2,6 +2,14 @@
 from .base import BaseSchemaField
 from django.core.exceptions import ValidationError
 
+"""
+Bool fields have:
+    - Name
+    - Label
+    - Required
+    - Value
+"""
+
 
 class BoolField(BaseSchemaField):
     type = "bool"

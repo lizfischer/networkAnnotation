@@ -3,6 +3,17 @@ from .base import BaseSchemaField
 from django.core.exceptions import ValidationError
 
 
+"""
+Date fields have:
+    - Name
+    - Label
+    - Required
+    - Allowed choices
+    - Value
+    
+"""
+
+
 class DropdownField(BaseSchemaField):
     type = "dropdown"
 

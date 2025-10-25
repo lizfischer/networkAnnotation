@@ -3,6 +3,14 @@ from .base import BaseSchemaField
 from django.core.exceptions import ValidationError
 from datetime import datetime
 
+"""
+Date fields have:
+    - Name
+    - Label
+    - Required
+    - Value
+"""
+
 
 class DateField(BaseSchemaField):
     type = "date"

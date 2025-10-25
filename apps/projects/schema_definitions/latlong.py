@@ -3,6 +3,15 @@ from .base import BaseSchemaField
 from django.core.exceptions import ValidationError
 
 
+"""
+Geo fields have:
+    - Name
+    - Label
+    - Required
+    - Value
+"""
+
+
 class LatLongField(BaseSchemaField):
     type = "latlong"
 

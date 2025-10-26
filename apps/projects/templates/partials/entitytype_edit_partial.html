@@ -1,3 +1,5 @@
+{% load form_fields %}
+
 <form
         hx-post="{% if entity %}{% url 'projects:edit_entitytype' entity.id %}
             {% else %}{% url 'projects:add_entitytype' project.pk %}{% endif %}"
@@ -15,7 +17,7 @@
                     }
                     return f;
               }),
-              addField() { this.fields.push({ name: '', label: '', type: 'text' }) },
+              addField() { this.fields.push({ name: '', label: '', type: '' }) },
               removeField(i) { this.fields.splice(i, 1) },
               prepareForSubmit() {
                     // Convert textarea options back to choices array
@@ -33,42 +35,48 @@
           "
 >
     <script id="schema-json" type="application/json">
-  {{ schema_json|default:"[]"|safe }}
-</script>
+        {{ schema_json|default:"[]"|safe }}
+    </script>
     {% csrf_token %}
 
-
-    {{ form.as_p }}
+    <fieldset>
+        {% render_field form.name %}
+        {% render_field form.description %}
+    </fieldset>
 
     <template x-for="(field, i) in fields" :key="i">
-        <div class="border p-3 mb-3 rounded bg-gray-50">
+        <fieldset class="border p-3 mb-3 rounded bg-gray-50">
+
             <div class="flex justify-between items-center">
-                {#                <strong x-text="'Field ' + (i + 1)"></strong>#}
+                <span>
+{#                    {% include "form_parts/field_select.html" with options=field_types xmodel="field.type" label="Type" %}#}
+                    <select x-model="field.tyhpe" class=" select w-full focus-within:outline-hidden">
+                        <option disabled value="">Type</option>
+                        {% for o in field_types %}
+                            <option value="{{ o }}">{{ o|capfirst }}</option>
+                        {% endfor %}
+                    </select>
+                </span>
                 <button @click="removeField(i)" type="button" class="text-red-500 text-sm">✕</button>
             </div>
 
             <!-- common metadata -->
             <label class="block mt-2">Name</label>
-            <input x-model="field.name" class="border rounded w-full p-1">
+            <input x-model="field.name" class=" input input-bordered w-full focus-within:outline-hidden">
 
             <label class="block mt-2">Label</label>
-            <input x-model="field.label" class="border rounded w-full p-1">
+            <input x-model="field.label" class=" input input-bordered w-full focus-within:outline-hidden">
 
-            <label class="block mt-2">Type</label>
-            <select x-model="field.type" class="border rounded w-full p-1">
-                {% for field_type in field_types %}
-                    <option value="{{ field_type }}">{{ field_type|capfirst }}</option>
-                {% endfor %}
-            </select>
 
             <label class="block mt-2">Required?</label>
-            <input x-model="field.required" type="checkbox" class="border rounded w-full p-1">
+            <input x-model="field.required" type="checkbox" class="checkbox">
 
             <!-- type-specific options -->
             <template x-if="field.type === 'dropdown'">
                 <div class="mt-3">
                     <label>Choices (one per line)</label>
-                    <textarea x-model="field.choices_str" class="border rounded w-full p-1"></textarea>
+                    <textarea x-model="field.choices_str"
+                              class="textarea w-full focus-within:outline-hidden" rows="4"></textarea>
                 </div>
             </template>
 
@@ -82,7 +90,7 @@
                     </select>
                 </div>
             </template>
-        </div>
+        </fieldset>
     </template>
 
     <button type="button" @click="addField()" class="btn btn-primary mt-4">+ Add Field</button>

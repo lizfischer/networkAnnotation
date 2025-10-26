@@ -128,12 +128,20 @@ def add_entitytype(request, pk):
         entity.project = project
         entity.save()
         return render(
-            request, "partials/entitytype_list_partial.html", {"entity": entity}
+            request,
+            "partials/entitytype_list_partial.html",
+            {
+                "entity": entity,
+            },
         )
     return render(
         request,
         "partials/entitytype_edit_partial.html",
-        {"form": form, "project": project},
+        {
+            "form": form,
+            "project": project,
+            "field_types": FIELD_REGISTRY.keys(),
+        },
     )
 
 
@@ -150,7 +158,6 @@ def edit_entitytype(request, pk):
     entity = get_object_or_404(EntityType, pk=pk)
     form = EntityTypeForm(request.POST or None, instance=entity)
     project_entity_types = entity.project.entity_types.all()
-    field_types = FIELD_REGISTRY.keys()
     if request.method == "POST" and form.is_valid():
         form.save()
         entity = get_object_or_404(EntityType, pk=pk)
@@ -161,7 +168,6 @@ def edit_entitytype(request, pk):
             {
                 "entity": entity,
                 "schema_json": schema,
-                "field_types": field_types,
                 "entity_types": project_entity_types,
             },
         )
@@ -174,7 +180,7 @@ def edit_entitytype(request, pk):
             "form": form,
             "entity": entity,
             "schema_json": schema,
-            "field_types": field_types,
+            "field_types": FIELD_REGISTRY.keys(),
             "entity_types": project_entity_types,
         },
     )

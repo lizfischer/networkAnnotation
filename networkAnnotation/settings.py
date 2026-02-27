@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.projects.apps.ProjectsConfig",
     "apps.users.apps.UsersConfig",
     "apps.library.apps.LibraryConfig",
+    "apps.annotation.apps.AnnotationConfig",
     "colorfield",
     "django.contrib.admin",
     "django.contrib.auth",

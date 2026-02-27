@@ -10,7 +10,7 @@
              peer-focus:scale-75 peer-focus:-translate-y-4 rtl:peer-focus:translate-x-1/4
              rtl:peer-focus:left-auto">{{ field.label }}</label>
     {% if field.errors %}
-        <span class="text-red-500 text-sm">{{ field.errors.0 }}</span>
+        <span class="text-red-500 text-sm">{{ field.errors|join:", "  }}</span>
     {% endif %}
     {% if field.help_text %}
         <p class="mb-3 ml-3 text-xs text-gray-500 dark:text-gray-400">

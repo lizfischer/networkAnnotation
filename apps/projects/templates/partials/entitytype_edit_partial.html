@@ -1,125 +1,261 @@
+{# entitytype_edit_partial.html #}
+
+{#    This partial renders the EntityType create/edit form.#}
+{#    It's loaded via HTMX and submitted via HTMX.#}
+{##}
+{#    The schema builder is handled entirely in Alpine.js:#}
+{#    - `fields` is the list of schema field definitions#}
+{#    - Each field has: name (internal), label (display), type, required, and type-specific options#}
+{#    - The `display_name` field is always present and locked -- users can't edit or remove it#}
+{#    - For user-defined fields, the internal `name` is auto-derived from the label (snake_case)#}
+{#    - On submit, the fields array is serialized to JSON and stuffed into a hidden input#}
+
 {% load form_fields %}
 
 <form
-        hx-post="{% if entity %}{% url 'projects:edit_entitytype' entity.id %}
-            {% else %}{% url 'projects:add_entitytype' project.pk %}{% endif %}"
-        hx-target="#entity-{% if entity %}{{ entity.id }}{% else %}new{% endif %}"
-        hx-swap="outerHTML"
-        class="border p-4 rounded mb-2 bg-base-200"
-        id="entity-{{ entity.id }}"
-        x-data="{
-{#              fields: JSON.parse(document.getElementById('schema-json').textContent),#}
-              fields: JSON.parse(document.getElementById('schema-json').textContent).map(f => {
-                    if (f.type === 'dropdown' && f.choices) {
-                        f.choices_str = f.choices.join('\n');
-                    } else {
-                        f.choices_str = '';
-                    }
-                    return f;
-              }),
-              addField() { this.fields.push({ name: '', label: '', type: '' }) },
-              removeField(i) { this.fields.splice(i, 1) },
-              prepareForSubmit() {
-                    // Convert textarea options back to choices array
-                    this.fields.forEach(f => {
-                        if (f.type === 'dropdown') {
-                            f.choices = f.choices_str.split('\n').map(s => s.trim()).filter(Boolean);
-                        }
-                        delete f.choices_str;
-                    });
+    hx-post="{% if entity %}{% url 'projects:edit_entitytype' entity.id %}
+        {% else %}{% url 'projects:add_entitytype' project.pk %}{% endif %}"
+    hx-target="#entity-{% if entity %}{{ entity.id }}{% else %}new{% endif %}"
+    hx-swap="outerHTML"
+    class="border p-4 rounded mb-2 bg-base-200"
+    id="entity-{{ entity.id|default:'new' }}"
+
+    x-data="{
+
+        {# ---- STATE ---- #}
+
+{#            Initialize the fields array from the schema JSON embedded in the page.#}
+{#            - If editing an existing EntityType, schema_json will contain the saved fields#}
+{#            - If creating a new one, schema_json defaults to '[]'#}
+{#            - display_name is always injected at the front if not already present#}
+{#            - dropdown fields get a `choices_str` helper property for textarea binding#}
+{#              (choices are stored as an array but edited as newline-separated text)#}
+
+        fields: (() => {
+            let f = JSON.parse(document.getElementById('schema-json').textContent).map(f => {
+                f.choices_str = (f.type === 'dropdown' && f.choices)
+                    ? f.choices.join('\n')
+                    : '';
+                return f;
+            });
+
+            {# Inject the locked display_name field at position 0 if it's not already there #}
+            if (!f.find(field => field.name === 'display_name')) {
+                f.unshift({
+                    name: 'display_name',
+                    label: 'Display Name',
+                    type: 'text',
+                    required: true,
+                    choices_str: '',
+                    _locked: true   {# _locked: frontend-only flag, stripped before submit #}
+                });
+            } else {
+                {# If display_name already exists (editing), make sure it's marked locked #}
+                f[f.findIndex(field => field.name === 'display_name')]._locked = true;
+            }
+
+            return f;
+        })(),
+
+        {# ---- METHODS ---- #}
+
+        {# Add a new blank field to the schema #}
+        addField() {
+            this.fields.push({
+                name: '',
+                label: '',
+                type: '',
+                required: false,
+                choices_str: '',
+                _is_new: true   {# _is_new: marks that name should auto-derive from label #}
+            });
+        },
+
+        {# Remove a field by index -- only callable for non-locked fields #}
+        removeField(i) {
+            this.fields.splice(i, 1);
+        },
+
+
+{#            Auto-derive internal field name from label (snake_case).#}
+{#            Only runs while the field is new (_is_new = true).#}
+{#            Once the user manually edits the name, _is_new is set to false and auto-derive stops.#}
+{#            Examples: 'Date of Birth' -> 'date_of_birth', 'First Name!' -> 'first_name'#}
+
+        toSnakeCase(str) {
+            return str.toLowerCase().trim()
+                .replace(/\s+/g, '_')
+                .replace(/[^a-z0-9_]/g, '');
+        },
+
+
+{#            Called on form submit before serializing to JSON.#}
+{#            Cleans up frontend-only helper properties that shouldn't be stored:#}
+{#            - choices_str: converted back to choices array for dropdown fields#}
+{#            - _locked: frontend display flag#}
+{#            - _is_new: frontend auto-derive flag#}
+
+        prepareForSubmit() {
+            this.fields.forEach(f => {
+                if (f.type === 'dropdown') {
+                    f.choices = f.choices_str.split('\n').map(s => s.trim()).filter(Boolean);
                 }
-            }"
-        @submit.prevent="
-            prepareForSubmit();
-            $el.querySelector('input[name=schema]').value = JSON.stringify(fields);
-          "
+                delete f.choices_str;
+                delete f._locked;
+                delete f._is_new;
+            });
+        }
+
+    }"
+
+    {# On submit: clean up fields, serialize to hidden input, then let HTMX handle the POST #}
+    @submit.prevent="
+        prepareForSubmit();
+        $el.querySelector('input[name=schema]').value = JSON.stringify(fields);
+        htmx.trigger($el, 'submit-clean');
+    "
+    hx-trigger="submit-clean"
 >
+
+{#        Schema JSON is embedded in the page as a <script> tag to avoid Django template#}
+{#        escaping issues. Alpine reads it once on initialization.#}
+
     <script id="schema-json" type="application/json">
         {{ schema_json|default:"[]"|safe }}
     </script>
+
     {% csrf_token %}
 
-    <fieldset>
+    {# Basic EntityType fields: name, description, color #}
+    <fieldset class="mb-4">
         {% render_field form.name %}
         {% render_field form.description %}
+        {{ form.color }}
     </fieldset>
 
+    <h3 class="font-semibold mb-2">Schema Fields</h3>
+
+    {# ---- FIELD LIST ---- #}
+    {# Renders one fieldset per schema field #}
     <template x-for="(field, i) in fields" :key="i">
         <fieldset class="border p-3 mb-3 rounded bg-gray-50">
 
+            {# Field type selector + remove button #}
             <div class="flex justify-between items-center">
-                <span>
-{#                    {% include "form_parts/field_select.html" with options=field_types xmodel="field.type" label="Type" %}#}
-                    <select x-model="field.tyhpe" class=" select w-full focus-within:outline-hidden">
-                        <option disabled value="">Type</option>
-                        {% for o in field_types %}
-                            <option value="{{ o }}">{{ o|capfirst }}</option>
-                        {% endfor %}
-                    </select>
-                </span>
-                <button @click="removeField(i)" type="button" class="text-red-500 text-sm">✕</button>
+
+                {# Type dropdown -- disabled for locked fields #}
+                <select
+                    x-model="field.type"
+                    :disabled="field._locked === true"
+                    class="select w-full focus-within:outline-hidden"
+                >
+                    <option disabled value="">Type</option>
+                    {% for o in field_types %}
+                        <option value="{{ o }}">{{ o|capfirst }}</option>
+                    {% endfor %}
+                </select>
+
+                {# Remove button -- hidden for locked fields #}
+                <button
+                    x-show="!field._locked"
+                    @click="removeField(i)"
+                    type="button"
+                    class="text-red-500 text-sm ml-2"
+                >✕</button>
+
             </div>
 
-            <!-- common metadata -->
-            <label class="block mt-2">Name</label>
-            <input x-model="field.name" class=" input input-bordered w-full focus-within:outline-hidden">
+{#                Label input -- the only name-related field shown to users.#}
+{#                For new fields, typing here auto-derives the internal `name` via toSnakeCase().#}
+{#                Disabled for locked fields (display_name).#}
+            <label class="block mt-2">Field Label</label>
+            <input
+                x-model="field.label"
+                :disabled="field._locked === true"
+                @input="if (field._is_new) field.name = toSnakeCase(field.label)"
+                class="input input-bordered w-full focus-within:outline-hidden"
+                placeholder="e.g. Date of Birth"
+            >
 
-            <label class="block mt-2">Label</label>
-            <input x-model="field.label" class=" input input-bordered w-full focus-within:outline-hidden">
-
-
+            {# Required checkbox -- disabled for locked fields #}
             <label class="block mt-2">Required?</label>
-            <input x-model="field.required" type="checkbox" class="checkbox">
+            <input
+                x-model="field.required"
+                :disabled="field._locked === true"
+                type="checkbox"
+                class="checkbox"
+            >
 
-            <!-- type-specific options -->
+            {# ---- TYPE-SPECIFIC OPTIONS ---- #}
+
+            {# Dropdown: show a textarea for entering choices one per line #}
             <template x-if="field.type === 'dropdown'">
                 <div class="mt-3">
                     <label>Choices (one per line)</label>
-                    <textarea x-model="field.choices_str"
-                              class="textarea w-full focus-within:outline-hidden" rows="4"></textarea>
+                    <textarea
+                        x-model="field.choices_str"
+                        class="textarea w-full focus-within:outline-hidden"
+                        rows="4"
+                        placeholder="Option A&#10;Option B&#10;Option C"
+                    ></textarea>
                 </div>
             </template>
 
+{#                Reference: select which EntityType this field points to.#}
+{#                Populated from entity_types passed in the view context.#}
+{#                TODO: currently binds to field.default -- should probably be field.target_entity_type_id#}
+{#                to match the ReferenceField schema definition.#}
             <template x-if="field.type === 'reference'">
                 <div class="mt-3">
                     <label>Entity type to reference</label>
-                    <select x-model="field.default">
+                    <select x-model="field.target_entity_type_id" class="select w-full">
+                        <option disabled value="">Select type</option>
                         {% for t in entity_types %}
-                            <option>{{ t.name|capfirst }}</option>
+                            <option value="{{ t.id }}">{{ t.name|capfirst }}</option>
                         {% endfor %}
                     </select>
                 </div>
             </template>
+
         </fieldset>
     </template>
 
-    <button type="button" @click="addField()" class="btn btn-primary mt-4">+ Add Field</button>
+    {# Add field button #}
+    <button type="button" @click="addField()" class="btn btn-primary mt-2">+ Add Field</button>
 
-    <!-- Bind hidden input to Alpine state -->
+
+{#        Hidden input that receives the serialized schema JSON on submit.#}
+{#        Alpine writes to this in prepareForSubmit() before the form posts.#}
+
     <input type="hidden" name="schema" :value="JSON.stringify(fields)">
 
-
+    {# Form actions #}
     <div class="mt-4">
         <button type="submit" class="btn btn-primary btn-sm">Save</button>
+
         {% if entity %}
+            {# Editing: cancel reloads the read-only row partial #}
             <button
-                    type="button"
-                    hx-get="{% url 'projects:entity_row' entity.id %}"
-                    hx-target="#entity-{{ entity.id }}"
-                    hx-swap="outerHTML"
-                    class="btn btn-outline-neutral btn-sm"
-            >
-                Cancel
-            </button>
+                type="button"
+                hx-get="{% url 'projects:entity_row' entity.id %}"
+                hx-target="#entity-{{ entity.id }}"
+                hx-swap="outerHTML"
+                class="btn btn-outline-neutral btn-sm"
+            >Cancel</button>
         {% else %}
-            <button type="button" class="btn btn-outline-neutral btn-sm" onclick="this.closest('form').remove()">
-                Cancel
-            </button>
+            {# Creating: cancel just removes the form from the DOM #}
+            <button
+                type="button"
+                class="btn btn-outline-neutral btn-sm"
+                onclick="this.closest('form').remove()"
+            >Cancel</button>
         {% endif %}
     </div>
+
 </form>
 
 <script>
+    {# Re-initialize jscolor after HTMX swaps in this partial #}
     setTimeout(() => {
         if (window.jscolor) jscolor.install();
     }, 100);

@@ -26,6 +26,10 @@ class ProjectForm(ModelForm):
 
 
 class EntityTypeForm(ModelForm):
+    def __init__(self, *args, project=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.project = project or getattr(self.instance, "project", None)
+
     class Meta:
         model = EntityType
         fields = ["name", "color", "description", "is_active", "schema"]
@@ -55,3 +59,20 @@ class EntityTypeForm(ModelForm):
 
             return parsed
         return value
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        project = self.project
+        if not project:
+            raise ValidationError("Project is required.")
+
+        if (
+            EntityType.objects.filter(project=project, name=name)
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
+            raise ValidationError(
+                "An entity with this name already exists in this project."
+            )
+        print("Seems fine")
+        return name

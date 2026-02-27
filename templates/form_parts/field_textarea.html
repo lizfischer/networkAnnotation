@@ -15,3 +15,6 @@
         {{ field.help_text }}
     </p>
 {% endif %}
+    {% if field.errors %}
+        <span class="text-red-500 text-sm">{{ field.errors|join:", "  }}</span>
+    {% endif %}

@@ -1,3 +1,4 @@
+{# entitytype_list_partial.html #}
 <div class="border p-4 rounded mb-2" id="entity-{{ entity.id }}">
     <div class="flex justify-between items-center">
 
@@ -30,9 +31,9 @@
 
     <p>{{ entity.description }}</p>
 
-        <div class="collapse {% if entity.schema_object %}collapse-arrow{% endif %}">
-            <input type="checkbox"/>
-            {% if entity.schema_object %}
+    <div class="collapse {% if entity.schema_object %}collapse-arrow{% endif %}">
+        <input type="checkbox"/>
+        {% if entity.schema_object %}
             <div class="collapse-title font-semibold  after:start-5 after:end-auto pe-4 ps-12">Metadata Schema</div>
 
             <div class=" collapse-content">
@@ -62,8 +63,13 @@
                                         {% if f.max_length %}
                                             <li>max length {{ f.max_length }}</li> {% endif %}
                                         {% if f.target_entity_type_id %}
-                                            <li>references entity type
-                                                {{ f.target_entity_type_id }}</li>{% endif %}
+                                           <li>references Entity of type
+                                            {% for t in project.entity_types.all %}
+                                                {% if t.id|stringformat:"s" == f.target_entity_type_id|stringformat:"s" %}
+                                                    "{{ t.name }}"
+                                                {% endif %}
+                                            {% endfor %}
+                                            </li>{% endif %}
                                         {% if f.choices %}
                                             <li>Choices:
                                                 <ul class="list-disc list-inside">{% for c in f.choices %}
@@ -77,8 +83,12 @@
                     </tbody>
                 </table>
             </div>
-            {% else %}
-                <div class="collapse-title text-sm">No metadata schema defined for this tag type</div>
-            {% endif %}
-        </div>
+        {% else %}
+            <div class="collapse-title text-sm">No metadata schema defined for this tag type</div>
+        {% endif %}
+    </div>
 </div>
+
+{% if new %}
+    <div id="entity-new"></div>
+{% endif %}

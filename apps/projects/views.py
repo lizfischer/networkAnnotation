@@ -122,16 +122,26 @@ EntityType CRUD
 @htmx_only
 def add_entitytype(request, pk):
     project = get_object_or_404(Project, pk=pk)
-    form = EntityTypeForm(request.POST or None)
+    form = EntityTypeForm(request.POST or None, project=project)
     if request.method == "POST":
-        entity = form.save(commit=False)
-        entity.project = project
-        entity.save()
+        if form.is_valid():
+            entity = form.save(commit=False)
+            entity.project = project
+            entity.save()
+            return render(
+                request,
+                "partials/entitytype_list_partial.html",
+                {"entity": entity, "new": True},
+            )
+            # If not valid, re-render form with errors
+        print("INVALID!")
         return render(
             request,
-            "partials/entitytype_list_partial.html",
+            "partials/entitytype_edit_partial.html",
             {
-                "entity": entity,
+                "form": form,
+                "project": project,
+                "field_types": FIELD_REGISTRY.keys(),
             },
         )
     return render(

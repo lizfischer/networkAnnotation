@@ -1,5 +1,5 @@
 from django.db.models.expressions import result
-
+from django.core.exceptions import ValidationError
 from apps.projects.schema_definitions.registry import get_field_class
 
 
@@ -46,3 +46,39 @@ def deserialize_schema(schema_json):
         obj.clean_definition(field_def)
         field_objects.append(obj)
     return field_objects
+
+
+def validate_metadata(schema, metadata):
+    """
+    Validate a metadata dict against a schema (list of field defs).
+    Raises ValidationError if any field fails.
+    Written by Claude
+    """
+    errors = {}
+    field_names = {f["name"] for f in schema}
+
+    # Check display_name is present
+    if "display_name" not in field_names:
+        raise ValidationError("Schema must include a 'display_name' field.")
+    if not metadata.get("display_name"):
+        raise ValidationError("'display_name' is required.")
+
+    for field_def in schema:
+        name = field_def["name"]
+        value = metadata.get(name)
+
+        # Check required fields
+        if field_def.get("required") and value is None:
+            errors[name] = f"'{name}' is required."
+            continue
+
+        # Run field-level validation
+        try:
+            field_cls = get_field_class(field_def["type"])
+            field_obj = field_cls(**field_def)
+            field_obj.validate(value, field_def)
+        except ValidationError as e:
+            errors[name] = str(e)
+
+    if errors:
+        raise ValidationError(errors)

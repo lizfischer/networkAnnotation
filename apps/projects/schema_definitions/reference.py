@@ -12,7 +12,7 @@ Reference fields have:
     - Required
     - Type referenced
     - Value
-    
+
 """
 
 
@@ -37,15 +37,22 @@ class ReferenceField(BaseSchemaField):
     def validate(self, value, field_def):
         if value is None:
             return
-        if not isinstance(value, int):
-            raise ValidationError(f"{field_def['name']} must be an entity ID (int).")
+        # Accept UUID strings (from JSON) or UUID objects
+        import uuid
+
+        try:
+            value_uuid = uuid.UUID(str(value))
+        except (ValueError, AttributeError):
+            raise ValidationError(f"{field_def['name']} must be a valid entity UUID.")
 
         target_id = field_def.get("target_entity_type_id")
         Entity = apps.get_model("projects", "Entity")
 
         if (
             target_id
-            and not Entity.objects.filter(id=value, entity_type_id=target_id).exists()
+            and not Entity.objects.filter(
+                id=value_uuid, entity_type_id=target_id
+            ).exists()
         ):
             raise ValidationError(
                 f"{field_def['name']} must reference a valid entity of the correct type."

@@ -10,7 +10,7 @@ Date fields have:
     - Required
     - Allowed choices
     - Value
-    
+
 """
 
 
@@ -27,7 +27,7 @@ class DropdownField(BaseSchemaField):
         return field_def
 
     def validate(self, value, field_def):
-        if value is None:
+        if value is None or value == "":
             return
         if value not in field_def.get("choices", []):
             raise ValidationError(

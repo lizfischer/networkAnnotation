@@ -14,9 +14,14 @@ class NumberField(BaseSchemaField):
     type = "number"
 
     def validate(self, value, field_def):
-        if value is None:
+        if value is None or value == "":
             return
-        if not isinstance(value, (float, int)):
+        if isinstance(value, (int, float)):
+            return
+        # Coerce string from JSON form input
+        try:
+            float(value)
+        except (ValueError, TypeError):
             raise ValidationError(f"{field_def['name']} must be a number")
 
     def clean_definition(self, field_def):

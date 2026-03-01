@@ -1,0 +1,27 @@
+{% comment %}
+    Rendered inside the base modal via HTMX.
+    Handles both document and page deletion depending on what's passed in context.
+{% endcomment %}
+
+<form method="post"
+      hx-post="{% if page %}
+                   {% url 'library:page_delete' project_id=project.id document_id=document.id page_id=page.id %}
+               {% else %}
+                   {% url 'library:document_delete' project_id=project.id document_id=document.id %}
+               {% endif %}"
+      hx-push-url="true"
+      hx-swap="none"
+>
+    {% csrf_token %}
+
+    <p>
+        Are you sure you want to delete
+        <strong>{% if page %}{{ page.title|default:"this page" }}{% else %}{{ document.title }}{% endif %}</strong>?
+        This cannot be undone.
+    </p>
+
+    <div class="modal-action">
+        <button type="button" class="btn" onclick="base_modal.close()">Cancel</button>
+        <button type="submit" class="btn btn-warning">Delete</button>
+    </div>
+</form>

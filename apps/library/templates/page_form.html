@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Pages — {{ document.title }}{% endblock %}
+
+{% block body %}
+
+    <h1>Upload Pages</h1>
+    <p class="text-gray-500 mb-4">
+        Upload one or more <code>.txt</code> files. Files will be ordered alphabetically by filename,
+        so name them accordingly — e.g. <code>001.txt</code>, <code>002.txt</code>.
+        New pages will be appended after any existing pages.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="max-w-lg">
+        {% csrf_token %}
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium mb-1">Text Files</label>
+            <input
+                    type="file"
+                    name="files"
+                    accept=".txt"
+                    multiple
+                    class="file-input file-input-bordered file-input-primary w-full"
+                    required
+            >
+            <p class="text-xs text-gray-500 mt-1">
+                Files will be ordered alphabetically by filename — name them accordingly, e.g. <code>001.txt</code>,
+                <code>002.txt</code>.
+            </p>
+        </div>
+
+        <div class="flex gap-2">
+            <button type="submit" class="btn btn-primary">Upload</button>
+            <a href="{% url 'library:document_detail' project_id=project.id document_id=document.id %}"
+               class="btn btn-outline">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+{% endblock %}

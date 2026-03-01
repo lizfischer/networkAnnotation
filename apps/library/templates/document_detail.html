@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{{ document.title }}{% endblock %}
+
+{% block body %}
+
+    {# Header row: document title + actions menu #}
+    <div class="flex justify-between items-center align-top mb-4">
+        <div>
+            <h1>{{ document.title }}</h1>
+            <p class="mb-4">{{ document.description }}</p>
+        </div>
+
+        <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn m-1">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+            </div>
+            <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm">
+                <li>
+                    <a href="{% url 'library:document_edit' project_id=project.id document_id=document.id %}">
+                        Edit Details
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'library:document_delete' project_id=project.id document_id=document.id %}"
+                       hx-get="{% url 'library:document_delete' project_id=project.id document_id=document.id %}"
+                       hx-target="#modal-content"
+                       hx-swap="innerHTML"
+                       onclick="openModal('Delete Document')">
+                        Delete Document
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    {# Pages section #}
+    <div class="flex justify-between items-center mb-2">
+        <h2>Pages</h2>
+        <a href="{% url 'library:page_create' project_id=project.id document_id=document.id %}"
+           class="btn btn-primary btn-sm">
+            + Upload Pages
+        </a>
+    </div>
+
+    {% if pages %}
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Preview</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for page in pages %}
+                        <tr>
+                            <td>{{ page.order }}</td>
+                            <td>
+                                <a href="{% url 'library:page_detail' project_id=project.id document_id=document.id page_id=page.id %}"
+                                   class="link">
+                                    {{ page.title|default:"Untitled Page" }}
+                                </a>
+                            </td>
+                            <td class="text-sm text-gray-500">
+                                {# Show first 80 chars of text as a preview #}
+                                {{ page.text|truncatechars:80 }}
+                            </td>
+                            <td>
+                                <div class="flex gap-2">
+                                    <a href="{% url 'library:page_detail' project_id=project.id document_id=document.id page_id=page.id %}"
+                                       class="btn btn-sm btn-outline">
+                                        Annotate
+                                    </a>
+                                    <a href="{% url 'library:page_edit' project_id=project.id document_id=document.id page_id=page.id %}"
+                                       class="btn btn-sm btn-outline">
+                                        Edit
+                                    </a>
+                                    <button
+                                        hx-get="{% url 'library:page_delete' project_id=project.id document_id=document.id page_id=page.id %}"
+                                        hx-target="#modal-content"
+                                        hx-swap="innerHTML"
+                                        onclick="openModal('Delete Page')"
+                                        class="btn btn-sm btn-accent">
+                                        Delete
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-gray-500">No pages yet.
+            <a href="{% url 'library:page_create' project_id=project.id document_id=document.id %}"
+               class="link">Upload some pages</a> to get started.
+        </p>
+    {% endif %}
+
+{% endblock %}

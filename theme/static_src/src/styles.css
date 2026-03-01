@@ -12,6 +12,9 @@
   * the scope of this path.
   */
 @source "../../../**/*.{html,py,js}";
+@layer utilities {
+    .fixed { position: fixed; }
+}
 
 /* Max container width on big screens */
 @media (width >= 96rem) {

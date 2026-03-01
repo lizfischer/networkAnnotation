@@ -32,7 +32,12 @@ class EntityTypeForm(ModelForm):
 
     class Meta:
         model = EntityType
-        fields = ["name", "color", "description", "is_active", "schema"]
+        fields = [
+            "name",
+            "color",
+            "description",
+            "schema",
+        ]  # "is_active" removed for now
         # help_texts = {
         #     "description": "Describe this entity type (optional)",
         # }

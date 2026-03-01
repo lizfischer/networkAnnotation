@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title|default:"Page" }} — {{ document.title }}{% endblock %}
+
+{% block head %}
+    <script>
+        // Data passed from Django to the canvas JS
+        const CANVAS_CONFIG = {
+            pageId: "{{ page.id }}",
+            projectId: "{{ project.id }}",
+            urls: {
+                entityTypes: "{% url 'annotation:entity_types' project_id=project.id %}",
+                entitySearch: "{% url 'annotation:entity_search' project_id=project.id %}",
+                entityCreate: "{% url 'annotation:entity_create' project_id=project.id %}",
+                annotations: "{% url 'annotation:annotations' page_id=page.id %}",
+                pageText: "{% url 'annotation:page_text' page_id=page.id %}",
+            }
+        };
+    </script>
+    <script src="{% load static %}{% static 'annotation_canvas.js' %}" defer></script>
+{% endblock %}
+
+
+{% block body %}
+
+    {# Header row: page title + prev/next navigation #}
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <h1>{{ page.title|default:"Untitled Page" }}</h1>
+            <p class="text-sm text-gray-500">{{ document.title }}</p>
+        </div>
+
+        {# Prev / Next page navigation #}
+        <div class="flex gap-2">
+            {% if prev_page_id %}
+                <a href="{% url 'library:page_detail' project_id=project.id document_id=document.id page_id=prev_page_id %}"
+                   class="btn btn-sm btn-outline">
+                    ← Prev
+                </a>
+            {% else %}
+                <button class="btn btn-sm btn-outline" disabled>← Prev</button>
+            {% endif %}
+
+            {% if next_page_id %}
+                <a href="{% url 'library:page_detail' project_id=project.id document_id=document.id page_id=next_page_id %}"
+                   class="btn btn-sm btn-outline">
+                    Next →
+                </a>
+            {% else %}
+                <button class="btn btn-sm btn-outline" disabled>Next →</button>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Mode toggle toolbar #}
+    <div class="flex gap-2 mb-4">
+        <button class="btn btn-sm btn-primary" id="btn-annotate" onclick="canvas.setMode('annotate')">
+            Annotate
+        </button>
+        <button class="btn btn-sm btn-outline" id="btn-edit" onclick="canvas.setMode('edit')">
+            Edit Text
+        </button>
+        <button class="btn btn-sm btn-outline" id="btn-bulk-tag" onclick="canvas.setMode('bulk_tag')">
+            Bulk Tag
+        </button>
+    </div>
+
+    {{ page.text|json_script:"page-text" }}
+
+    <div id="annotation-canvas"
+         class="border rounded p-4 min-h-64 bg-base-100 font-mono text-sm leading-relaxed">
+    </div>
+{% endblock %}

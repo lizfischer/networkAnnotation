@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{% if document %}Edit Document{% else %}New Document{% endif %}{% endblock %}
+
+{% block body %}
+
+    <h1>{% if document %}Edit Document{% else %}New Document{% endif %}</h1>
+
+    <form method="post" class="max-w-lg mt-4">
+        {% csrf_token %}
+
+        <div class="relative mb-3">
+            <input
+                type="text"
+                name="title"
+                value="{{ document.title|default:'' }}"
+                placeholder=" "
+                class="input input-bordered block rounded-t-lg px-2.5 pb-2.5 pt-5 w-full text-sm peer"
+                required
+            >
+            <label class="absolute text-sm text-gray-500 duration-300
+                transform -translate-y-4 scale-75 top-4 z-10 origin-[0] start-2.5
+                peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0
+                peer-focus:scale-75 peer-focus:-translate-y-4">
+                Title
+            </label>
+        </div>
+
+        <div class="relative mb-3">
+            <textarea
+                name="description"
+                placeholder=" "
+                rows="3"
+                class="textarea block rounded-t-lg px-2.5 pb-2.5 pt-5 w-full text-sm peer"
+            >{{ document.description|default:'' }}</textarea>
+            <label class="absolute text-sm text-gray-500 duration-300
+                transform -translate-y-4 scale-75 top-4 z-10 origin-[0] start-2.5
+                peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0
+                peer-focus:scale-75 peer-focus:-translate-y-4">
+                Description
+            </label>
+        </div>
+
+        <div class="flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">
+                {% if document %}Save{% else %}Create{% endif %}
+            </button>
+            <a href="{% if document %}{% url 'library:document_detail' project_id=project.id document_id=document.id %}
+                     {% else %}{% url 'projects:detail' pk=project.id %}{% endif %}"
+               class="btn btn-outline">
+                Cancel
+            </a>
+        </div>
+    </form>
+
+{% endblock %}

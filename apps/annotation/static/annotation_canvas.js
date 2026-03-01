@@ -286,6 +286,155 @@ class DateField {
 }
 
 
+/**
+ * ReferenceField widget.
+ *
+ * Typeahead search for an entity of a specific type. Renders a search input
+ * that, on selection, collapses to a chip showing the entity display name.
+ *
+ * Stored format: UUID string of the selected entity's id.
+ * getValue() returns the UUID string, or null if nothing selected.
+ */
+class ReferenceField {
+
+    constructor(container, targetEntityTypeId, fetchFn, entitySearchUrl, label = "Search…") {
+        this.container = container;
+        this.targetEntityTypeId = targetEntityTypeId;
+        this._fetch = fetchFn;
+        this.entitySearchUrl = entitySearchUrl;
+        this._selectedId = null;
+        this._selectedName = null;
+        this._searchTimeout = null;
+        this._build(label);
+    }
+
+    _build(label) {
+        // Search input row
+        this.searchWrapper = document.createElement("div");
+        this.searchWrapper.className = "relative";
+
+        this.input = document.createElement("input");
+        this.input.type = "text";
+        this.input.placeholder = label;
+        this.input.className = "input input-bordered input-sm w-full";
+        this.searchWrapper.appendChild(this.input);
+
+        this.dropdown = document.createElement("div");
+        this.dropdown.className = "absolute z-50 w-full bg-base-100 border rounded shadow-md mt-1 max-h-40 overflow-y-auto hidden";
+        this.searchWrapper.appendChild(this.dropdown);
+
+        this.container.appendChild(this.searchWrapper);
+
+        // Chip (shown after selection, hidden initially)
+        this.chip = document.createElement("div");
+        this.chip.className = "hidden flex items-center gap-2 input input-bordered input-sm w-full";
+
+        this.chipLabel = document.createElement("span");
+        this.chipLabel.className = "flex-1 text-sm truncate";
+
+        const clearBtn = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.textContent = "×";
+        clearBtn.className = "btn btn-ghost btn-xs";
+        clearBtn.addEventListener("click", () => this._clear());
+
+        this.chip.appendChild(this.chipLabel);
+        this.chip.appendChild(clearBtn);
+        this.container.appendChild(this.chip);
+
+        this.input.addEventListener("input", () => {
+            clearTimeout(this._searchTimeout);
+            this._searchTimeout = setTimeout(() => this._doSearch(this.input.value.trim()), 200);
+        });
+
+        this.input.addEventListener("blur", () => {
+            // Small delay so click on dropdown item registers first
+            setTimeout(() => this.dropdown.classList.add("hidden"), 150);
+        });
+    }
+
+    async _doSearch(q) {
+        this.dropdown.innerHTML = "";
+        if (!q) {
+            this.dropdown.classList.add("hidden");
+            return;
+        }
+
+        try {
+            const url = `${this.entitySearchUrl}?q=${encodeURIComponent(q)}&type_id=${this.targetEntityTypeId}`;
+            const data = await this._fetch(url);
+
+            if (!data.entities.length) {
+                this.dropdown.innerHTML = `<p class="text-sm text-gray-400 px-2 py-1">No results</p>`;
+                this.dropdown.classList.remove("hidden");
+                return;
+            }
+
+            for (const entity of data.entities) {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.textContent = entity.display_name;
+                item.className = "btn btn-ghost btn-sm w-full text-left justify-start";
+                item.addEventListener("mousedown", () => this._select(entity.id, entity.display_name));
+                this.dropdown.appendChild(item);
+            }
+            this.dropdown.classList.remove("hidden");
+        } catch (err) {
+            console.error("ReferenceField search failed:", err);
+        }
+    }
+
+    _select(id, name) {
+        this._selectedId = id;
+        this._selectedName = name;
+        this.chipLabel.textContent = name;
+        this.searchWrapper.classList.add("hidden");
+        this.chip.classList.remove("hidden");
+        this.chip.classList.add("flex");
+        this.dropdown.classList.add("hidden");
+    }
+
+    _clear() {
+        this._selectedId = null;
+        this._selectedName = null;
+        this.input.value = "";
+        this.chip.classList.add("hidden");
+        this.chip.classList.remove("flex");
+        this.searchWrapper.classList.remove("hidden");
+        this.input.focus();
+    }
+
+    getValue() {
+        return this._selectedId;
+    }
+
+    hasValue() {
+        return this._selectedId !== null;
+    }
+
+    setError() {
+        if (!this._selectedId) this.input.classList.add("input-error");
+    }
+
+    focus() {
+        this.input.focus();
+    }
+
+    /**
+     * Pre-populates from a stored UUID. Fetches the display name to show in the chip.
+     */
+    async prefill(entityId, displayName) {
+        if (!entityId) return;
+        if (displayName) {
+            this._select(entityId, displayName);
+        } else {
+            // Fallback: just store the id, show it as the label until we can resolve it
+            this._select(entityId, entityId);
+        }
+    }
+}
+
+
 // ============================================================
 class AnnotationCanvas {
 
@@ -462,25 +611,34 @@ class AnnotationCanvas {
     }
 
     /**
-     * Builds an inline CSS style for an annotated span.
-     * Single annotation: solid background color at low opacity.
-     * Multiple overlapping annotations: striped gradient.
+     * Builds an inline CSS background-color style for an annotated span.
+     * Single annotation: color at 30% opacity.
+     * Multiple overlapping annotations: colors multiplied together (like layered transparencies),
+     * which makes overlaps darker and same-color overlaps even darker.
      */
     _buildHighlightStyle(annotations) {
-        if (annotations.length === 1) {
-            const color = annotations[0].entity_type_color;
-            return `background-color: ${color}40;`;
+        const hexToRgb = hex => {
+            const h = hex.replace("#", "");
+            return [
+                parseInt(h.slice(0, 2), 16),
+                parseInt(h.slice(2, 4), 16),
+                parseInt(h.slice(4, 6), 16),
+            ];
+        };
+
+        // Start from white (255,255,255) and multiply each annotation color in at 30% opacity.
+        // Multiplying with an alpha-blended color: result = base * (1 - alpha + alpha * color/255)
+        const alpha = 0.30;
+        let r = 255, g = 255, b = 255;
+
+        for (const ann of annotations) {
+            const [cr, cg, cb] = hexToRgb(ann.entity_type_color);
+            r = r * (1 - alpha + alpha * cr / 255);
+            g = g * (1 - alpha + alpha * cg / 255);
+            b = b * (1 - alpha + alpha * cb / 255);
         }
 
-        const stripeSize = 100 / annotations.length;
-        const stops = annotations.map((ann, i) => {
-            const color = ann.entity_type_color;
-            const start = i * stripeSize;
-            const end = (i + 1) * stripeSize;
-            return `${color}60 ${start}%, ${color}60 ${end}%`;
-        });
-
-        return `background: repeating-linear-gradient(45deg, ${stops.join(", ")});`;
+        return `background-color: rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)});`;
     }
 
     // ---- TOOLBAR ----
@@ -955,6 +1113,7 @@ class AnnotationCanvas {
         input.type = "text";
         input.placeholder = "Search...";
         input.className = "input input-bordered input-sm w-full mb-2";
+        input.value = this._getText().slice(start, end);
         popover.appendChild(input);
 
         const results = document.createElement("div");
@@ -1009,6 +1168,8 @@ class AnnotationCanvas {
         document.body.appendChild(popover);
         this.popover = popover;
         input.focus();
+        input.select();
+        doSearch(input.value);
     }
 
     _showEntityForm(start, end, entityType, rect, existingEntity = null) {
@@ -1016,7 +1177,7 @@ class AnnotationCanvas {
         const otherFields = schema.filter(f => f.name !== "display_name");
 
         if (otherFields.length > 2) {
-            alert("Complex entity creation not yet supported inline. Coming soon.");
+            this._showEntityFormModal(start, end, entityType, schema, existingEntity);
             return;
         }
 
@@ -1038,102 +1199,273 @@ class AnnotationCanvas {
         label.style.color = entityType.color;
         popover.appendChild(label);
 
-        const fieldInputs = {};
-        const dateFields = {}; // DateField instances keyed by field name
-
-        const dnInput = document.createElement("input");
-        dnInput.type = "text";
-        dnInput.placeholder = "Display name";
-        dnInput.className = "input input-bordered input-sm w-full mb-2";
-        // Pre-populate from existing entity, or default to selected text for new
-        dnInput.value = existingEntity
-            ? (existingEntity.metadata?.display_name ?? "")
-            : this._getText().slice(start, end);
-        fieldInputs["display_name"] = dnInput;
-        popover.appendChild(dnInput);
-
-        for (const field of otherFields) {
-            if (field.type === "date") {
-                const wrapper = document.createElement("div");
-                popover.appendChild(wrapper);
-                const df = new DateField(wrapper, field.label || field.name);
-                if (existingEntity) df.setValue(existingEntity.metadata?.[field.name]);
-                dateFields[field.name] = df;
-            } else {
-                const fieldInput = document.createElement("input");
-                fieldInput.type = field.type === "number" ? "number" : "text";
-                fieldInput.placeholder = field.label || field.name;
-                fieldInput.className = "input input-bordered input-sm w-full mb-2";
-                if (existingEntity) fieldInput.value = existingEntity.metadata?.[field.name] ?? "";
-                fieldInputs[field.name] = fieldInput;
-                popover.appendChild(fieldInput);
-            }
-        }
+        const {fieldInputs, dateFields, referenceFields, dnInput, focusFirst} =
+            this._buildEntityFormFields(schema, existingEntity, start, end, popover);
 
         const saveBtn = document.createElement("button");
         saveBtn.textContent = existingEntity ? "Save Changes" : "Create & Tag";
         saveBtn.className = "btn btn-primary btn-sm w-full";
         saveBtn.addEventListener("click", async (e) => {
             e.stopPropagation();
-
-            const metadata = {};
-
-            for (const [name, input] of Object.entries(fieldInputs)) {
-                metadata[name] = input.value.trim();
-            }
-
-            for (const [name, df] of Object.entries(dateFields)) {
-                metadata[name] = df.getValue();
-            }
-
-            if (!metadata.display_name) {
-                dnInput.classList.add("input-error");
-                return;
-            }
-
-            try {
-                if (existingEntity) {
-                    // PATCH existing entity
-                    const url = this.urls.entityUpdate.replace("__id__", existingEntity.id);
-                    const updated = await this._fetch(url, {
-                        method: "PATCH",
-                        body: JSON.stringify({metadata}),
-                    });
-                    // Update display name in all local annotations referencing this entity
-                    this.annotations = this.annotations.map(a =>
-                        a.entity_id === updated.id
-                            ? {...a, entity_display_name: updated.display_name}
-                            : a
-                    );
-                    this._closePopover();
-                    this._render();
-                } else {
-                    // POST new entity, then create annotation
-                    const entity = await this._fetch(this.urls.entityCreate, {
-                        method: "POST",
-                        body: JSON.stringify({entity_type_id: entityType.id, metadata}),
-                    });
-                    this._createAnnotation(start, end, entity);
-                }
-            } catch (err) {
-                console.error(existingEntity ? "Failed to update entity:" : "Failed to create entity:", err);
-                alert(existingEntity ? "Failed to save changes. Please try again." : "Failed to create entity. Please try again.");
-            }
+            await this._submitEntityForm(
+                {fieldInputs, dateFields, referenceFields, dnInput, entityType, existingEntity, start, end}
+            );
         });
 
         popover.appendChild(saveBtn);
         document.body.appendChild(popover);
         this.popover = popover;
+        focusFirst();
+    }
 
-        if (otherFields.length > 0) {
-            const firstField = otherFields[0];
-            if (dateFields[firstField.name]) {
-                dateFields[firstField.name].focus();
-            } else {
-                fieldInputs[firstField.name].focus();
+    _showEntityFormModal(start, end, entityType, schema, existingEntity = null) {
+        const modalContent = document.getElementById("modal-content");
+        modalContent.innerHTML = "";
+
+        const form = document.createElement("div");
+        form.className = "mt-4 space-y-3";
+
+        const {fieldInputs, dateFields, referenceFields, dnInput, focusFirst} =
+            this._buildEntityFormFields(schema, existingEntity, start, end, form);
+
+        const actions = document.createElement("div");
+        actions.className = "flex gap-2 mt-4";
+
+        const saveBtn = document.createElement("button");
+        saveBtn.textContent = existingEntity ? "Save Changes" : "Create & Tag";
+        saveBtn.className = "btn btn-primary btn-sm";
+        saveBtn.addEventListener("click", async () => {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Saving…";
+            const saved = await this._submitEntityForm(
+                {fieldInputs, dateFields, referenceFields, dnInput, entityType, existingEntity, start, end, isModal: true}
+            );
+            if (!saved) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = existingEntity ? "Save Changes" : "Create & Tag";
             }
-        } else {
-            dnInput.focus();
+        });
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.className = "btn btn-ghost btn-sm";
+        cancelBtn.addEventListener("click", () => {
+            closeModal();
+            this._closePopover();
+        });
+
+        actions.appendChild(saveBtn);
+        actions.appendChild(cancelBtn);
+        form.appendChild(actions);
+        modalContent.appendChild(form);
+
+        openModal(existingEntity ? "Edit " + entityType.name : "New " + entityType.name);
+        focusFirst();
+    }
+
+    /**
+     * Builds the shared form field DOM for both the inline popover and the modal.
+     * Appends fields to `container`. Returns handles needed for value collection and focus.
+     */
+    _buildEntityFormFields(schema, existingEntity, start, end, container) {
+        const otherFields = schema.filter(f => f.name !== "display_name");
+        const fieldInputs = {};
+        const dateFields = {};
+        const referenceFields = {};
+
+        const addLabel = (parent, text, required) => {
+            const lbl = document.createElement("label");
+            lbl.className = "text-xs text-gray-500 mb-0.5 block";
+            lbl.textContent = text;
+            if (required) {
+                const star = document.createElement("span");
+                star.textContent = " *";
+                star.className = "text-error";
+                lbl.appendChild(star);
+            }
+            parent.appendChild(lbl);
+        };
+
+        // display_name is always required
+        const dnWrapper = document.createElement("div");
+        addLabel(dnWrapper, "Display name", true);
+        const dnInput = document.createElement("input");
+        dnInput.type = "text";
+        dnInput.placeholder = "Display name";
+        dnInput.className = "input input-bordered input-sm w-full";
+        dnInput.value = existingEntity
+            ? (existingEntity.metadata?.display_name ?? "")
+            : this._getText().slice(start, end);
+        fieldInputs["display_name"] = dnInput;
+        dnWrapper.appendChild(dnInput);
+        container.appendChild(dnWrapper);
+
+        for (const field of otherFields) {
+            const wrapper = document.createElement("div");
+
+            // Label above field (except bool which has its own inline label)
+            if (field.type !== "bool") {
+                const lbl = document.createElement("label");
+                lbl.className = "text-xs text-gray-500 mb-0.5 block";
+                lbl.textContent = field.label || field.name;
+                if (field.required) {
+                    const star = document.createElement("span");
+                    star.textContent = " *";
+                    star.className = "text-error";
+                    lbl.appendChild(star);
+                }
+                wrapper.appendChild(lbl);
+            }
+
+            if (field.type === "date") {
+                const df = new DateField(wrapper, field.label || field.name);
+                if (existingEntity) df.setValue(existingEntity.metadata?.[field.name]);
+                dateFields[field.name] = df;
+            } else if (field.type === "dropdown") {
+                const select = document.createElement("select");
+                select.className = "select select-bordered select-sm w-full";
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = field.required ? "Select…" : "None";
+                placeholder.selected = !existingEntity;
+                select.appendChild(placeholder);
+                for (const choice of (field.choices || [])) {
+                    const opt = document.createElement("option");
+                    opt.value = choice;
+                    opt.textContent = choice;
+                    if (existingEntity && existingEntity.metadata?.[field.name] === choice) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                }
+                fieldInputs[field.name] = select;
+                wrapper.appendChild(select);
+            } else if (field.type === "reference") {
+                const rf = new ReferenceField(
+                    wrapper,
+                    field.target_entity_type_id,
+                    this._fetch.bind(this),
+                    this.urls.entitySearch,
+                    "Search…",
+                );
+                if (existingEntity) {
+                    const storedId = existingEntity.metadata?.[field.name];
+                    if (storedId) {
+                        const knownAnnotation = this.annotations.find(a => a.entity_id === storedId);
+                        rf.prefill(storedId, knownAnnotation?.entity_display_name ?? null);
+                    }
+                }
+                referenceFields[field.name] = rf;
+            } else if (field.type === "bool") {
+                const row = document.createElement("div");
+                row.className = "flex items-center gap-2";
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.className = "checkbox checkbox-sm";
+                checkbox.id = `field-${field.name}`;
+                if (existingEntity) {
+                    const v = existingEntity.metadata?.[field.name];
+                    checkbox.checked = v === true || v === "true" || v === "1";
+                }
+                const checkLabel = document.createElement("label");
+                checkLabel.htmlFor = `field-${field.name}`;
+                checkLabel.className = "text-sm";
+                checkLabel.textContent = field.label || field.name;
+                if (field.required) {
+                    const star = document.createElement("span");
+                    star.textContent = " *";
+                    star.className = "text-error";
+                    checkLabel.appendChild(star);
+                }
+                row.appendChild(checkbox);
+                row.appendChild(checkLabel);
+                fieldInputs[field.name] = checkbox;
+                wrapper.appendChild(row);
+            } else {
+                const fieldInput = document.createElement("input");
+                fieldInput.type = field.type === "number" ? "number" : "text";
+                fieldInput.placeholder = field.label || field.name;
+                fieldInput.className = "input input-bordered input-sm w-full";
+                if (existingEntity) fieldInput.value = existingEntity.metadata?.[field.name] ?? "";
+                fieldInputs[field.name] = fieldInput;
+                wrapper.appendChild(fieldInput);
+            }
+
+            container.appendChild(wrapper);
+        }
+
+        const focusFirst = () => {
+            if (otherFields.length > 0) {
+                const first = otherFields[0];
+                if (dateFields[first.name]) dateFields[first.name].focus();
+                else if (referenceFields[first.name]) referenceFields[first.name].focus();
+                else fieldInputs[first.name]?.focus();
+            } else {
+                dnInput.focus();
+            }
+        };
+
+        return {fieldInputs, dateFields, referenceFields, dnInput, focusFirst};
+    }
+
+    /**
+     * Collects form values, validates, and POSTs or PATCHes.
+     * Returns true on success, false on validation failure (so the caller can re-enable the button).
+     */
+    async _submitEntityForm({fieldInputs, dateFields, referenceFields, dnInput, entityType, existingEntity, start, end, isModal = false}) {
+        const metadata = {};
+
+        for (const [name, input] of Object.entries(fieldInputs)) {
+            if (input.type === "checkbox") {
+                metadata[name] = input.checked;
+            } else if (input.type === "number") {
+                const v = input.value.trim();
+                metadata[name] = v === "" ? null : Number(v);
+            } else {
+                metadata[name] = input.value.trim();
+            }
+        }
+        for (const [name, df] of Object.entries(dateFields)) {
+            metadata[name] = df.getValue();
+        }
+        for (const [name, rf] of Object.entries(referenceFields)) {
+            metadata[name] = rf.getValue(); // UUID string or null
+        }
+
+        if (!metadata.display_name) {
+            dnInput.classList.add("input-error");
+            return false;
+        }
+        dnInput.classList.remove("input-error");
+
+        try {
+            if (existingEntity) {
+                const url = this.urls.entityUpdate.replace("__id__", existingEntity.id);
+                const updated = await this._fetch(url, {
+                    method: "PATCH",
+                    body: JSON.stringify({metadata}),
+                });
+                this.annotations = this.annotations.map(a =>
+                    a.entity_id === updated.id
+                        ? {...a, entity_display_name: updated.display_name, entity_metadata: updated.metadata}
+                        : a
+                );
+                if (isModal) closeModal();
+                this._closePopover();
+                this._render();
+            } else {
+                const entity = await this._fetch(this.urls.entityCreate, {
+                    method: "POST",
+                    body: JSON.stringify({entity_type_id: entityType.id, metadata}),
+                });
+                if (isModal) closeModal();
+                this._createAnnotation(start, end, entity);
+            }
+            return true;
+        } catch (err) {
+            console.error(existingEntity ? "Failed to update entity:" : "Failed to create entity:", err);
+            alert(existingEntity ? "Failed to save changes. Please try again." : "Failed to create entity. Please try again.");
+            return false;
         }
     }
 

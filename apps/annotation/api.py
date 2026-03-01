@@ -118,6 +118,7 @@ def annotations(request, page_id):
                 "entity_type_id": str(a.entity.entity_type_id),
                 "entity_type_name": a.entity.entity_type.name,
                 "entity_type_color": a.entity.entity_type.color,
+                "entity_metadata": a.entity.metadata,
             }
             for a in annotations
         ]
@@ -171,9 +172,49 @@ def annotations(request, page_id):
                 "entity_type_id": str(annotation.entity.entity_type_id),
                 "entity_type_name": annotation.entity.entity_type.name,
                 "entity_type_color": annotation.entity.entity_type.color,
+                "entity_metadata": annotation.entity.metadata,
             },
             status=201,
         )
+
+
+@login_required
+@require_http_methods(["PATCH"])
+def annotations_bulk_update(request, page_id):
+    """
+    PATCH -- update offsets and annotated_text snapshots for surviving annotations
+    after a text edit. Called immediately after page_text PUT.
+
+    Accepts: { "annotations": [{"id": "...", "start_offset": n, "end_offset": n, "annotated_text": "..."}, ...] }
+    Returns: { "updated": n }
+    """
+    page = get_object_or_404(Page, pk=page_id)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return json_error("Invalid JSON")
+
+    items = data.get("annotations")
+    if not isinstance(items, list):
+        return json_error("'annotations' must be a list.")
+
+    updated_count = 0
+    for item in items:
+        ann_id = item.get("id")
+        if not ann_id:
+            continue
+        try:
+            ann = Annotation.objects.get(pk=ann_id, page=page)
+        except Annotation.DoesNotExist:
+            continue
+        ann.start_offset = item["start_offset"]
+        ann.end_offset = item["end_offset"]
+        ann.annotated_text = item["annotated_text"]
+        ann.save()
+        updated_count += 1
+
+    return JsonResponse({"updated": updated_count})
 
 
 @login_required
@@ -294,4 +335,48 @@ def entity_create(request, project_id):
             "metadata": entity.metadata,
         },
         status=201,
+    )
+
+
+# ---- ENTITY UPDATE ----
+
+
+@login_required
+@require_http_methods(["PATCH"])
+def entity_update(request, entity_id):
+    """
+    PATCH -- update an entity's metadata inline from the annotation canvas.
+
+    Accepts: { "metadata": { "display_name": "...", ... } }
+    Returns: the updated entity
+    """
+    entity = get_object_or_404(Entity, pk=entity_id)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return json_error("Invalid JSON")
+
+    metadata = data.get("metadata")
+    if metadata is None:
+        return json_error("'metadata' is required.")
+
+    entity.metadata = metadata
+
+    try:
+        entity.full_clean()
+    except Exception as e:
+        return json_error(str(e))
+
+    entity.save()
+
+    return JsonResponse(
+        {
+            "id": str(entity.id),
+            "display_name": entity.display_name,
+            "entity_type_id": str(entity.entity_type_id),
+            "entity_type_name": entity.entity_type.name,
+            "entity_type_color": entity.entity_type.color,
+            "metadata": entity.metadata,
+        }
     )

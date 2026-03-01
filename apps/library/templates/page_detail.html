@@ -12,7 +12,9 @@
                 entityTypes: "{% url 'annotation:entity_types' project_id=project.id %}",
                 entitySearch: "{% url 'annotation:entity_search' project_id=project.id %}",
                 entityCreate: "{% url 'annotation:entity_create' project_id=project.id %}",
+                entityUpdate: "{% url 'annotation:entity_update' entity_id='00000000-0000-0000-0000-000000000000' %}".replace("00000000-0000-0000-0000-000000000000", "__id__"),
                 annotations: "{% url 'annotation:annotations' page_id=page.id %}",
+                annotationsBulkUpdate: "{% url 'annotation:annotations_bulk_update' page_id=page.id %}",
                 pageText: "{% url 'annotation:page_text' page_id=page.id %}",
             }
         };

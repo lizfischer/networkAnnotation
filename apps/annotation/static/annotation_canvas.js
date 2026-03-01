@@ -265,6 +265,24 @@ class DateField {
     focus() {
         this.input.focus();
     }
+
+    /**
+     * Pre-populates the DateField from a stored value.
+     * Accepts a structured { iso, precision, original } object or a plain string.
+     */
+    setValue(storedValue) {
+        if (!storedValue) return;
+        const displayText = (typeof storedValue === "object" && storedValue.original)
+            ? storedValue.original
+            : String(storedValue);
+        this.input.value = displayText;
+        this._onInput(); // parse + update hint/precision row
+        // If stored precision differs from parsed (user had overridden it), restore it
+        if (typeof storedValue === "object" && storedValue.precision) {
+            this._userOverride = storedValue.precision;
+            this.precisionSelect.value = storedValue.precision;
+        }
+    }
 }
 
 
@@ -335,7 +353,8 @@ class AnnotationCanvas {
         const segments = this._buildSegments(text);
         const fragment = document.createDocumentFragment();
 
-        for (const segment of segments) {
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
             const hasAnnotations = segment.annotations.length > 0;
             const isPending = segment.isPending;
 
@@ -347,7 +366,12 @@ class AnnotationCanvas {
                 // Plain text inside the pending selection -- show as selected
                 const span = document.createElement("span");
                 span.textContent = segment.text;
-                span.className = "bg-blue-200 rounded-sm px-0.5";
+                if (this._pendingSelection?.entityType) {
+                    span.style.backgroundColor = this._pendingSelection.entityType.color + "40";
+                    span.classList.add("rounded-sm", "px-0.5");
+                } else {
+                    span.className = "bg-blue-200 rounded-sm px-0.5";
+                }
                 fragment.appendChild(span);
 
             } else {
@@ -361,11 +385,26 @@ class AnnotationCanvas {
                 );
 
                 span.style.cssText = this._buildHighlightStyle(segment.annotations);
-                span.classList.add("annotation-span", "cursor-pointer", "rounded-sm", "px-0.5");
+                span.classList.add("annotation-span", "cursor-pointer");
+
+                // Only round/pad the left edge if the previous segment shares none of our annotations
+                const annIds = new Set(segment.annotations.map(a => a.id));
+                const prevSeg = segments[i - 1];
+                const nextSeg = segments[i + 1];
+                const leftIsEdge = !prevSeg || !prevSeg.annotations.some(a => annIds.has(a.id));
+                const rightIsEdge = !nextSeg || !nextSeg.annotations.some(a => annIds.has(a.id));
+
+                if (leftIsEdge) span.classList.add("rounded-l-sm", "pl-0.5");
+                if (rightIsEdge) span.classList.add("rounded-r-sm", "pr-0.5");
 
                 // If also within pending selection, add a ring
                 if (isPending) {
-                    span.classList.add("ring-2", "ring-blue-400");
+                    if (this._pendingSelection?.entityType) {
+                        span.style.outline = `2px solid ${this._pendingSelection.entityType.color}`;
+                        span.style.outlineOffset = "0px";
+                    } else {
+                        span.classList.add("ring-2", "ring-blue-400");
+                    }
                 }
 
                 span.addEventListener("click", this._onAnnotationClick);
@@ -454,18 +493,33 @@ class AnnotationCanvas {
         toolbar.id = "bulk-tag-toolbar";
         toolbar.className = "flex flex-wrap gap-2 mb-2 hidden";
 
+        const setActive = (activeBtn, et) => {
+            toolbar.querySelectorAll("button").forEach(b => {
+                const color = this.entityTypes.find(t => t.id === b.dataset.typeId)?.color;
+                b.style.backgroundColor = color + "40";
+                b.style.borderColor = color;
+                b.style.outline = "";
+                b.style.color = "";
+            });
+            activeBtn.style.backgroundColor = et.color;
+            activeBtn.style.borderColor = et.color;
+            activeBtn.style.outline = `3px solid ${et.color}`;
+            activeBtn.style.outlineOffset = "2px";
+            activeBtn.style.color = "white";
+        };
+
         for (const et of this.entityTypes) {
             const btn = document.createElement("button");
             btn.textContent = et.name;
             btn.dataset.typeId = et.id;
             btn.className = "btn btn-sm";
-            btn.style.backgroundColor = et.color;
+            btn.style.backgroundColor = et.color + "40";
             btn.style.borderColor = et.color;
 
-            btn.addEventListener("click", () => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
                 this.bulkTagType = et;
-                toolbar.querySelectorAll("button").forEach(b => b.classList.remove("btn-active"));
-                btn.classList.add("btn-active");
+                setActive(btn, et);
             });
 
             toolbar.appendChild(btn);
@@ -494,16 +548,19 @@ class AnnotationCanvas {
         if (mode === "annotate") {
             annotateBtn.classList.replace("btn-outline", "btn-primary");
             if (toolbar) toolbar.classList.add("hidden");
+            this.bulkTagType = null;
             this._disableEditing();
 
         } else if (mode === "bulk_tag") {
             if (bulkTagBtn) bulkTagBtn.classList.replace("btn-outline", "btn-primary");
             if (toolbar) toolbar.classList.remove("hidden");
+            this.bulkTagType = null;
             this._disableEditing();
 
         } else if (mode === "edit") {
             editBtn.classList.replace("btn-outline", "btn-primary");
             if (toolbar) toolbar.classList.add("hidden");
+            this.bulkTagType = null;
             this._enableEditing();
         }
     }
@@ -585,9 +642,26 @@ class AnnotationCanvas {
                 await this._fetch(this._annotationDetailUrl(a.id), {method: "DELETE"});
             }
 
-            // Update local annotation offsets and text snapshots
+            // Persist shifted offsets and updated text snapshots for surviving annotations
             const invalidatedIds = new Set(invalidated.map(a => a.id));
-            this.annotations = updatedAnnotations.filter(a => !invalidatedIds.has(a.id));
+            const surviving = updatedAnnotations.filter(a => !invalidatedIds.has(a.id));
+
+            if (surviving.length > 0) {
+                await this._fetch(this.urls.annotationsBulkUpdate, {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                        annotations: surviving.map(a => ({
+                            id: a.id,
+                            start_offset: a.start_offset,
+                            end_offset: a.end_offset,
+                            annotated_text: a.annotated_text,
+                        })),
+                    }),
+                });
+            }
+
+            // Update local state
+            this.annotations = surviving;
 
             this.container.dataset.text = newText;
             this.setMode("annotate");
@@ -789,7 +863,7 @@ class AnnotationCanvas {
             if (this.mode === "bulk_tag" && this.bulkTagType) {
                 this._pendingSelection = {start, end};
                 this._render();
-                this._createAnnotationForType(start, end, this.bulkTagType);
+                this._createAnnotationForType(start, end, this.bulkTagType, rect);
             } else if (this.mode === "annotate") {
                 // Set pending selection and re-render to show highlight before popover opens
                 this._pendingSelection = {start, end};
@@ -848,6 +922,8 @@ class AnnotationCanvas {
             btn.style.borderColor = et.color;
 
             btn.addEventListener("click", () => {
+                this._pendingSelection = {start, end, entityType: et};
+                this._render();
                 this._showEntitySearch(start, end, et, rect);
             });
 
@@ -890,7 +966,7 @@ class AnnotationCanvas {
         newBtn.className = "btn btn-outline btn-sm w-full mt-2";
         newBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            this._showNewEntityForm(start, end, entityType, rect);
+            this._showEntityForm(start, end, entityType, rect);
         });
         popover.appendChild(newBtn);
 
@@ -935,7 +1011,7 @@ class AnnotationCanvas {
         input.focus();
     }
 
-    _showNewEntityForm(start, end, entityType, rect) {
+    _showEntityForm(start, end, entityType, rect, existingEntity = null) {
         const schema = this.entityTypes.find(et => et.id === entityType.id)?.schema || [];
         const otherFields = schema.filter(f => f.name !== "display_name");
 
@@ -958,7 +1034,7 @@ class AnnotationCanvas {
 
         const label = document.createElement("p");
         label.className = "text-sm font-semibold mb-2";
-        label.textContent = "New " + entityType.name;
+        label.textContent = existingEntity ? "Edit " + entityType.name : "New " + entityType.name;
         label.style.color = entityType.color;
         popover.appendChild(label);
 
@@ -969,40 +1045,43 @@ class AnnotationCanvas {
         dnInput.type = "text";
         dnInput.placeholder = "Display name";
         dnInput.className = "input input-bordered input-sm w-full mb-2";
-        dnInput.value = this._getText().slice(start, end);
+        // Pre-populate from existing entity, or default to selected text for new
+        dnInput.value = existingEntity
+            ? (existingEntity.metadata?.display_name ?? "")
+            : this._getText().slice(start, end);
         fieldInputs["display_name"] = dnInput;
         popover.appendChild(dnInput);
 
         for (const field of otherFields) {
             if (field.type === "date") {
-                // Render DateField widget into a wrapper div
                 const wrapper = document.createElement("div");
                 popover.appendChild(wrapper);
                 const df = new DateField(wrapper, field.label || field.name);
+                if (existingEntity) df.setValue(existingEntity.metadata?.[field.name]);
                 dateFields[field.name] = df;
             } else {
                 const fieldInput = document.createElement("input");
                 fieldInput.type = field.type === "number" ? "number" : "text";
                 fieldInput.placeholder = field.label || field.name;
                 fieldInput.className = "input input-bordered input-sm w-full mb-2";
+                if (existingEntity) fieldInput.value = existingEntity.metadata?.[field.name] ?? "";
                 fieldInputs[field.name] = fieldInput;
                 popover.appendChild(fieldInput);
             }
         }
 
         const saveBtn = document.createElement("button");
-        saveBtn.textContent = "Create & Tag";
+        saveBtn.textContent = existingEntity ? "Save Changes" : "Create & Tag";
         saveBtn.className = "btn btn-primary btn-sm w-full";
         saveBtn.addEventListener("click", async (e) => {
             e.stopPropagation();
+
             const metadata = {};
 
-            // Collect plain field values
             for (const [name, input] of Object.entries(fieldInputs)) {
                 metadata[name] = input.value.trim();
             }
 
-            // Collect date field values
             for (const [name, df] of Object.entries(dateFields)) {
                 metadata[name] = df.getValue();
             }
@@ -1013,14 +1092,32 @@ class AnnotationCanvas {
             }
 
             try {
-                const entity = await this._fetch(this.urls.entityCreate, {
-                    method: "POST",
-                    body: JSON.stringify({entity_type_id: entityType.id, metadata}),
-                });
-                this._createAnnotation(start, end, entity);
+                if (existingEntity) {
+                    // PATCH existing entity
+                    const url = this.urls.entityUpdate.replace("__id__", existingEntity.id);
+                    const updated = await this._fetch(url, {
+                        method: "PATCH",
+                        body: JSON.stringify({metadata}),
+                    });
+                    // Update display name in all local annotations referencing this entity
+                    this.annotations = this.annotations.map(a =>
+                        a.entity_id === updated.id
+                            ? {...a, entity_display_name: updated.display_name}
+                            : a
+                    );
+                    this._closePopover();
+                    this._render();
+                } else {
+                    // POST new entity, then create annotation
+                    const entity = await this._fetch(this.urls.entityCreate, {
+                        method: "POST",
+                        body: JSON.stringify({entity_type_id: entityType.id, metadata}),
+                    });
+                    this._createAnnotation(start, end, entity);
+                }
             } catch (err) {
-                console.error("Failed to create entity:", err);
-                alert("Failed to create entity. Please try again.");
+                console.error(existingEntity ? "Failed to update entity:" : "Failed to create entity:", err);
+                alert(existingEntity ? "Failed to save changes. Please try again." : "Failed to create entity. Please try again.");
             }
         });
 
@@ -1086,6 +1183,22 @@ class AnnotationCanvas {
             });
             actions.appendChild(removeBtn);
 
+            const entityType = this.entityTypes.find(et => et.id === annotation.entity_type_id);
+            if (entityType) {
+                const editBtn = document.createElement("button");
+                editBtn.className = "btn btn-ghost btn-xs";
+                editBtn.textContent = "Edit";
+                editBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const entity = {
+                        id: annotation.entity_id,
+                        metadata: annotation.entity_metadata,
+                    };
+                    this._showEntityForm(annotation.start_offset, annotation.end_offset, entityType, rect, entity);
+                });
+                actions.appendChild(editBtn);
+            }
+
             item.appendChild(actions);
             popover.appendChild(item);
         }
@@ -1096,8 +1209,7 @@ class AnnotationCanvas {
 
     // ---- ANNOTATION CRUD ----
 
-    async _createAnnotationForType(start, end, entityType) {
-        const rect = this.container.getBoundingClientRect();
+    async _createAnnotationForType(start, end, entityType, rect) {
         this._showEntitySearch(start, end, entityType, rect);
     }
 
@@ -1150,13 +1262,18 @@ class AnnotationCanvas {
         popover.style.top = `${top}px`;
         popover.style.left = `${left}px`;
 
-        const onClickOutside = (e) => {
+        // Remove any existing click-outside listener before registering a new one
+        if (this._onClickOutside) {
+            document.removeEventListener("click", this._onClickOutside);
+            this._onClickOutside = null;
+        }
+
+        this._onClickOutside = (e) => {
             if (!popover.contains(e.target)) {
                 this._closePopover();
-                document.removeEventListener("click", onClickOutside);
             }
         };
-        setTimeout(() => document.addEventListener("click", onClickOutside), 200);
+        setTimeout(() => document.addEventListener("click", this._onClickOutside), 200);
 
         return popover;
     }
@@ -1168,6 +1285,11 @@ class AnnotationCanvas {
      *   Defaults to true -- clears selection when popover is fully dismissed.
      */
     _closePopover(clearPending = true) {
+        if (this._onClickOutside) {
+            document.removeEventListener("click", this._onClickOutside);
+            this._onClickOutside = null;
+        }
+
         if (this.popover) {
             this.popover.remove();
             this.popover = null;
